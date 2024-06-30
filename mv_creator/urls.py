@@ -1,9 +1,11 @@
-# app1/api_urls.py
+# mv_creator/urls.py
 
 from django.urls import path
 from . import views
-from .views import hello_rest_api
+
 
 urlpatterns = [
-    path('hello', hello_rest_api, name='hello_rest_api'),
+    path('', views.hello_rest_api, name='hello_rest_api'),
+    path('hello', views.hello_rest_api, name='hello_rest_api'),
+    path('bye', views.hello_rest_api, name='hello_rest_api'),
 ]
