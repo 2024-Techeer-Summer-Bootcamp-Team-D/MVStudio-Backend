@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: MVStudio-MySQL
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    networks:
+      - mvs
+
+  backend:
+    container_name: MVStudio-Backend
+    build:
+      context: ../MVStudio-Backend
+    volumes:
+      - static_volume:/MVStudio-Backend/static
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USER: ${MYSQL_USER}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      - db
+    networks:
+      - mvs
+    restart: always
+    command: >
+      sh -c "python manage.py makemigrations &&
+            python manage.py migrate &&
+            gunicorn --bind 0.0.0.0:8000 config.wsgi:application"
+
+volumes:
+  db_data:
+  static_volume:
+
+networks:
+  mvs:
+    driver: bridge
+
