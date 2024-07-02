@@ -3,38 +3,36 @@ from .models import Member
 from django.db import IntegrityError
 
 
-class MemberSerializer(serializers.Serializer):
-    login_id = serializers.CharField()
-    nickname = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-    age = serializers.IntegerField()
-    sex = serializers.CharField()
-    youtube_account = serializers.CharField()
-    instagram_account = serializers.CharField()
+class MemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = ['id','login_id','nickname','password','age','sex','country']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
     def create(self, validated_data):
-        login_id = validated_data.get('login_id')
-        nickname = validated_data.get('nickname')
-        password = validated_data.get('password')
-        age = validated_data.get('age')
-        sex = validated_data.get('sex')
-        youtube_account = validated_data.get('youtube_account')
-        instagram_account = validated_data.get('instagram_account')
-
         try:
-            member = Member(login_id=login_id, nickname=nickname, password=password, 
-                            age=age, sex=sex, youtube_account=youtube_account,
-                            instagram_account=instagram_account)
-            member.save()
-            return {
-                "code": "M001",
-                "status": 201,
-                "message": "회원가입 완료"
-            }
+            member = Member.objects.create(
+                login_id=validated_data['login_id'],
+                nickname=validated_data['nickname'],
+                password=validated_data['password'],
+                age=validated_data['age'],
+                sex=validated_data['sex'],
+                country=validated_data['country'],
+            )
+            return member
         except IntegrityError as e:
-            # 중복된 login_id가 이미 존재하는 경우의 예외 처리
-            return {
-                "code": "M002",
-                "status": 400,
-                "message": "이미 존재하는 로그인 ID입니다."
-            }
+            raise serializers.ValidationError({"login_id": "This login_id is already in use."})
+
+
+class MemberDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = ['login_id', 'nickname', 'age', 'sex', 'country']
+        
+    def update(self, instance, validated_data):
+        instance.nickname = validated_data.get('nickname', instance.nickname)
+        instance.country = validated_data.get('country', instance.country)
+        instance.save()
+        return instance
