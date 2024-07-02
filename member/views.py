@@ -155,7 +155,7 @@ class MemberLoginView(APIView):
                 description="로그인 실패",
                 examples={
                     "application/json": {
-                        "code": "L002",
+                        "code": "A002_1",
                         "status": 400,
                         "message": "로그인 실패"
                     }
@@ -171,14 +171,14 @@ class MemberLoginView(APIView):
             login_id = serializer.validated_data['login_id']
             member = Member.objects.get(login_id=login_id)
             response_data = {
-                "code": "L001",
+                "code": "A001",
                 "status": 200,
                 "message": "로그인 성공"
             }
             logger.info(f'INFO {client_ip} {current_time} POST /members/login 200 login success')
             return Response(response_data, status=200)
         response_data = {
-            "code": "L002",
+            "code": "A002_1",
             "status": 400,
             "message": "로그인 실패"
         }
