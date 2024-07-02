@@ -1,9 +1,11 @@
 # mv_creator/urls.py
 
 from django.urls import path
-from . import views
+from .views import MemberSignUpView,MemberDetailView
+
 
 
 urlpatterns = [
-    path('', views.SignUpView.as_view(), name='sign-up'),
+    path('', MemberSignUpView.as_view(), name='member-sign-up'),
+    path('<int:member_id>/',MemberDetailView.as_view(), name='member-detail')
 ]
