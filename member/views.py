@@ -105,7 +105,30 @@ class MemberDetailView(APIView):
             ),
         }
     )
-        
+
+    def get(self, request, member_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "P002",
+                "status": 404,
+                "message": "회원 정보가 없습니다."
+            }
+            logger.warning(f'WARNING {client_ip} {current_time} GET /members 404 does not existing')
+            return Response(response_data, status=404)
+
+        serializer = MemberDetailSerializer(member)
+        response_data = {
+            "code": "P001",
+            "status": 200,
+            "message": "회원 정보 조회 성공"
+        }
+        logger.info(f'INFO {client_ip} {current_time} GET /members 200 signup success')
+        return Response(serializer.data, status=200)
+
     @swagger_auto_schema(
         operation_summary="회원 정보 수정 API",
         operation_description="이 API는 특정 회원의 정보를 수정하는 데 사용됩니다.",
@@ -143,6 +166,7 @@ class MemberDetailView(APIView):
             ),
         }
     )
+
     def patch(self, request, member_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
