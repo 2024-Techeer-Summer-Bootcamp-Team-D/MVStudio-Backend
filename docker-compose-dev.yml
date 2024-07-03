@@ -1,21 +1,21 @@
 version: '3'
 
 services:
-  db:
-    image: mysql:8.0
-    container_name: MVStudio-MySQL
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
-    networks:
-      - mvs
+#  db:
+#    image: mysql:8.0
+#    container_name: MVStudio-MySQL
+#    ports:
+#      - "3306:3306"
+#    volumes:
+#      - db_data:/var/lib/mysql
+#    environment:
+#      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+#      MYSQL_DATABASE: ${MYSQL_DATABASE}
+#      MYSQL_USER: ${MYSQL_USER}
+#      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+#
+#    networks:
+#      - mvs
 
   backend:
     container_name: MVStudio-Backend
@@ -31,10 +31,10 @@ services:
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_USER: ${MYSQL_USER}
       DATABASE_PASSWORD: ${MYSQL_PASSWORD}
-    depends_on:
-      - db
-    networks:
-      - mvs
+#    depends_on:
+#      - db
+#    networks:
+#      - mvs
     restart: always
     command: >
       sh -c "sleep 5 &&
@@ -47,7 +47,7 @@ volumes:
   db_data:
   static_volume:
 
-networks:
-  mvs:
-    driver: bridge
+#networks:
+#  mvs:
+#    driver: bridge
 
