@@ -1,12 +1,12 @@
-from rest_framework import serializers, viewsets
+# serializers.py
+from rest_framework import serializers
 from .models import Member
-from django.db import IntegrityError
 
 
 class MemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
-        fields = ['id','login_id','nickname','password','age','sex','country']
+        fields = ['id', 'login_id', 'nickname', 'password', 'age', 'sex', 'country']
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -30,9 +30,26 @@ class MemberDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
         fields = ['login_id', 'nickname', 'age', 'sex', 'country']
-        
+
     def update(self, instance, validated_data):
         instance.nickname = validated_data.get('nickname', instance.nickname)
         instance.country = validated_data.get('country', instance.country)
         instance.save()
         return instance
+
+
+class MemberLoginSerializer(serializers.Serializer):
+    login_id = serializers.CharField(max_length=100)
+    password = serializers.CharField(max_length=100)
+
+    def validate(self, data):
+        login_id = data.get('login_id')
+        password = data.get('password')
+
+        if not Member.objects.filter(login_id=login_id).exists():
+            raise serializers.ValidationError("로그인 실패: 해당 로그인 ID가 존재하지 않습니다.")
+
+        if not Member.objects.filter(login_id=login_id, password=password).exists():
+            raise serializers.ValidationError("로그인 실패: 로그인 ID 또는 비밀번호가 잘못되었습니다.")
+
+        return data
