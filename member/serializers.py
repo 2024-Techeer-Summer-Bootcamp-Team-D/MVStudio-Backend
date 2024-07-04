@@ -1,4 +1,5 @@
-# serializers.py
+# member/serializers.py
+
 from rest_framework import serializers
 from .models import Member
 from django.db import IntegrityError

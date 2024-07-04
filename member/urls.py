@@ -1,4 +1,4 @@
-# mv_creator/urls.py
+# member/urls.py
 
 from django.urls import path
 from .views import MemberSignUpView,MemberDetailView, MemberLoginView
