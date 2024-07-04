@@ -1,8 +1,9 @@
-# serializers.py
+# member/serializers.py
+
 from rest_framework import serializers
 from django.db import IntegrityError
 from .models import Member
-
+from django.db import IntegrityError
 
 class MemberSerializer(serializers.ModelSerializer):
     class Meta:

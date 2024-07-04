@@ -40,6 +40,7 @@ services:
       sh -c "sleep 5 &&
             python manage.py makemigrations &&
             python manage.py makemigrations member &&
+            python manage.py makemigrations music_videos &&
             python manage.py migrate &&
             python manage.py runserver 0.0.0.0:8000"
 
