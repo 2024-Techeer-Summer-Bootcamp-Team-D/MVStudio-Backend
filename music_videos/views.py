@@ -8,6 +8,7 @@ import environ
 from rest_framework import status
 from datetime import datetime
 from .serializers import CreateLyricsSerializer
+from member.models import Member
 
 env = environ.Env()
 environ.Env.read_env()
@@ -98,3 +99,20 @@ class CreateLyricsView(APIView):
                     "message": f"서버 오류: {str(e)}"
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class MusicVideo(APIView):
+#     def post(self,request):
+#         client_ip = request.META.get('REMOTE_ADDR', None)
+#         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#         member_id = request.data['member_id']
+#         try:
+#             member = Member.objects.get(id=member_id)
+#         except Member.DoesNotExist:
+#             response_data = {
+#                 "code": "P002",
+#                 "status": 404,
+#                 "message": "회원 정보가 없습니다."
+#             }
+#             logging.warning(f'WARNING {client_ip} {current_time} POST /music_videos 404 does not existing')
+#             return Response(response_data, status=404)
+#         data = request.data.copy()

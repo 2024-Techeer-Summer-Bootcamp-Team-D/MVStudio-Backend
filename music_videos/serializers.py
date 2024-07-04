@@ -23,3 +23,12 @@ class CreateLyricsSerializer(serializers.ModelSerializer):
             return mv
         except IntegrityError as e:
             raise serializers.ValidationError({"member_id": "This member_id is not valid."})
+
+
+class MusicVideoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MusicVideo
+        fields = ['member_id','subject', 'genre', 'vocal','lyrics']
+        extra_kwargs = {
+            'member_id': {'write_only': True}
+        }
