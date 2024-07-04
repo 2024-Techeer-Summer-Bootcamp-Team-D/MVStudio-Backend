@@ -1,9 +1,11 @@
 # views.py
+import boto3
+from django.conf import settings
 
-from django.shortcuts import render
 from rest_framework import status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import Member
 from .serializers import MemberSerializer, MemberDetailSerializer, MemberLoginSerializer
@@ -13,6 +15,7 @@ from drf_yasg import openapi
 
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +75,7 @@ class MemberSignUpView(APIView):
 
 
 class MemberDetailView(APIView):
-    
+    parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
         operation_summary="회원 정보 조회 API",
         operation_description="이 API는 특정 회원의 정보를 조회하는 데 사용됩니다.",
@@ -136,7 +139,66 @@ class MemberDetailView(APIView):
     @swagger_auto_schema(
         operation_summary="회원 정보 수정 API",
         operation_description="이 API는 특정 회원의 정보를 수정하는 데 사용됩니다.",
-        request_body=MemberDetailSerializer,
+
+    manual_parameters=[
+            openapi.Parameter(
+                'login_id',
+                openapi.IN_FORM,
+                description="Login ID",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'nickname',
+                openapi.IN_FORM,
+                description="Nickname",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'profile_image',
+                openapi.IN_FORM,
+                description="Profile image file",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'comment',
+                openapi.IN_FORM,
+                description="Comment",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'country',
+                openapi.IN_FORM,
+                description="Country",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'birthday',
+                openapi.IN_FORM,
+                description="Birthday",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'youtube_account',
+                openapi.IN_FORM,
+                description="YouTube account",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'instagram_account',
+                openapi.IN_FORM,
+                description="Instagram account",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+
+        ],
         responses={
             200: openapi.Response(
                 description="회원 정보 수정 완료",
@@ -184,7 +246,32 @@ class MemberDetailView(APIView):
             }
             logger.warning(f'WARNING {client_ip} {current_time} PATCH /members 404 does not existing')
             return Response(response_data, status=404)
-        serializer = MemberDetailSerializer(instance=member, data=request.data, partial=True)
+        data = request.data.copy()
+        image_file = data['profile_image']
+
+        if image_file:
+            content_type = image_file.content_type
+            s3 = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME,
+                              aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                              aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+            s3_bucket = settings.AWS_STORAGE_BUCKET_NAME
+            # 파일 이름을 member_id로 구별
+            file_extension = os.path.splitext(image_file.name)[1]  # 파일 확장자 추출
+            s3_key = f"profiles/{member_id}{file_extension}"
+
+            s3.upload_fileobj(image_file, s3_bucket, s3_key, ExtraArgs={
+                'ContentType': content_type
+            })
+
+
+            image_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}{s3_key}"
+
+            data['profile_image'] = image_url
+            serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
+
+        else:
+            serializer = MemberDetailSerializer(instance=member, data=request.data, partial=True)
+
         if serializer.is_valid():
             serializer.save()
             response_data = {

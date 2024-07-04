@@ -28,7 +28,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_NAME: ${MYSQL_DATABASE}
       DATABASE_USER: ${MYSQL_USER}
       DATABASE_PASSWORD: ${MYSQL_PASSWORD}
     depends_on:
