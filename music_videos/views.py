@@ -9,6 +9,7 @@ from rest_framework import status
 from datetime import datetime
 from .serializers import CreateLyricsSerializer
 from member.models import Member
+from .models import Genre
 
 env = environ.Env()
 environ.Env.read_env()
@@ -47,15 +48,19 @@ class CreateLyricsView(APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         serializer = CreateLyricsSerializer(data=request.data)
+
         if serializer.is_valid():
             subject = serializer.validated_data['subject']
-            genre = serializer.validated_data['genre']
+            genre_id = serializer.validated_data['genre']
+            genres = Genre.objects.filter(id__in=genre_id)
+            genre_names = [str(genre) for genre in genres]
+            genre_names_str = ", ".join(genre_names)
             language = serializer.validated_data['language']
             vocal = serializer.validated_data['vocal']
 
             prompt = (
                 f"Create song lyrics based on the keyword '{subject}'. "
-                f"The genre should be {genre}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
+                f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
                 f"The song should have 4 verses, each with 4 lines, formatted as follows:\n\n"
                 f"[Verse]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
                 f"[Verse 2]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
@@ -100,19 +105,20 @@ class CreateLyricsView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class MusicVideo(APIView):
-#     def post(self,request):
-#         client_ip = request.META.get('REMOTE_ADDR', None)
-#         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#         member_id = request.data['member_id']
-#         try:
-#             member = Member.objects.get(id=member_id)
-#         except Member.DoesNotExist:
-#             response_data = {
-#                 "code": "P002",
-#                 "status": 404,
-#                 "message": "회원 정보가 없습니다."
-#             }
-#             logging.warning(f'WARNING {client_ip} {current_time} POST /music_videos 404 does not existing')
-#             return Response(response_data, status=404)
-#         data = request.data.copy()
+class MusicVideo(APIView):
+    def post(self,request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        member_id = request.data['member_id']
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "P002",
+                "status": 404,
+                "message": "회원 정보가 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} POST /music_videos 404 does not existing')
+            return Response(response_data, status=404)
+        data = request.data.copy()
+

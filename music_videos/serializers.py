@@ -7,7 +7,7 @@ from django.db import IntegrityError
 class CreateLyricsSerializer(serializers.ModelSerializer):
     class Meta:
         model = MusicVideo
-        fields = ['subject', 'genre', 'language', 'vocal']
+        fields = ['subject', 'genre_id', 'language', 'vocal']
         extra_kwargs = {
             'member_id': {'write_only': True}
         }
