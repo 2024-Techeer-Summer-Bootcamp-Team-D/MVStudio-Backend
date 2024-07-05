@@ -45,7 +45,10 @@ class MusicVideoSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         genres = validated_data.pop('genres_ids')
         instruments = validated_data.pop('instruments_ids')
-        music_video = MusicVideo.objects.create(**validated_data)
+        try:
+            music_video = MusicVideo.objects.create(**validated_data)
+        except:
+            print('nono')
         music_video.genres.set(genres)
         music_video.instruments.set(instruments)
         return music_video

@@ -24,6 +24,16 @@ class CreateLyricsView(APIView):
     @swagger_auto_schema(
         operation_summary="가사 생성 API",
         operation_description="이 API는 가사를 생성하는 데 사용됩니다.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
+                'genres': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
+                'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
+                'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬 유형'),
+            },
+            required=['subject', 'genres', 'language', 'vocal']
+        ),
         responses={
             201: openapi.Response(
                 description="가사 생성 완료",
@@ -47,6 +57,7 @@ class CreateLyricsView(APIView):
             ),
         }
     )
+
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -104,7 +115,26 @@ class CreateLyricsView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+
 class MusicVideo(APIView):
+
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'member_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
+                'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
+                'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
+                'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포 유형'),
+                'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
+                'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬 유형'),
+                'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사')
+            },
+            required=['member_id', 'subject', 'genres_ids', 'instruments_ids', 'tempo_id', 'vocal', 'lyrics']
+        )
+    )
     def post(self,request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -142,23 +172,34 @@ class MusicVideo(APIView):
             "length": 0,
             "cover_image": "url",
             "mv_file": "file_url",
-            "genre_ids": [1, 3],
-            "instrument_ids": [2, 3],
-            "tempo": 1
+            "genres_ids": data['genres_ids'],
+            "instruments_ids": data['instruments_ids'],
+            "tempo": data['tempo']
         }
 
+        print(verses)
         # 뮤직비디오 및 벌스 객체 생성
         serializer = MusicVideoSerializer(data=data)
         if serializer.is_valid():
+            print("ok")
             music_video = serializer.save()
-            for idx,verse in enumerate(verses):
-                verse_data = {
-                    "lyrics" : "verse",
-                    'start_time' : 'start_time',
-                    'end_time' : 'end_time',
-                    'sequence' : 'idx',
-                    'mv_id' : serializer.validated_data['id']
-                }
-                verse_serializer = VerseSerializer(data = verse_data)
-                if verse_serializer.is_valid():
-                    verse_serializer.save()
+            # for idx,verse in enumerate(verses):
+            #     verse_data = {
+            #         "lyrics" : "verse",
+            #         'start_time' : 'start_time',
+            #         'end_time' : 'end_time',
+            #         'sequence' : 'idx',
+            #         'mv_id' : serializer.validated_data['id']
+            #     }
+            #     verse_serializer = VerseSerializer(data = verse_data)
+            #     if verse_serializer.is_valid():
+            #         verse_serializer.save()
+
+            response_data = {
+                "lyrics": serializer.validated_data['id'],
+                "code": "M005",
+                "status": 201,
+                "message": "가사 생성 완료"
+            }
+            logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
+            return Response(response_data, status=status.HTTP_201_CREATED)
