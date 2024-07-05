@@ -1,15 +1,19 @@
-import logging
-import openai
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
+
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import environ
-from rest_framework import status
-from datetime import datetime
 from .serializers import CreateLyricsSerializer
 from member.models import Member
 from .models import Genre
+
+from datetime import datetime
+import re
+import logging
+import openai
 
 env = environ.Env()
 environ.Env.read_env()
@@ -47,63 +51,59 @@ class CreateLyricsView(APIView):
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        serializer = CreateLyricsSerializer(data=request.data)
+        subject = request.data['subject']
+        genre_id = request.data['genre_id']
+        genres = Genre.objects.filter(id__in=genre_id)
+        genre_names = [str(genre) for genre in genres]
+        genre_names_str = ", ".join(genre_names)
+        language = request.data['language']
+        vocal = request.data['vocal']
 
-        if serializer.is_valid():
-            subject = serializer.validated_data['subject']
-            genre_id = serializer.validated_data['genre']
-            genres = Genre.objects.filter(id__in=genre_id)
-            genre_names = [str(genre) for genre in genres]
-            genre_names_str = ", ".join(genre_names)
-            language = serializer.validated_data['language']
-            vocal = serializer.validated_data['vocal']
+        prompt = (
+            f"Create song lyrics based on the keyword '{subject}'. "
+            f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
+            f"The song should have 4 verses, each with 4 lines, formatted as follows:\n\n"
+            f"[Verse]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
+            f"[Verse 2]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
+            f"[Bridge]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
+            f"[Verse 3]\nLine 1\nLine 2\nLine 3\nLine 4\n"
+        )
 
-            prompt = (
-                f"Create song lyrics based on the keyword '{subject}'. "
-                f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
-                f"The song should have 4 verses, each with 4 lines, formatted as follows:\n\n"
-                f"[Verse]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Verse 2]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Bridge]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Verse 3]\nLine 1\nLine 2\nLine 3\nLine 4\n"
+        try:
+            openai.api_key = OPENAI_API_KEY
+            response = openai.chat.completions.create(
+                model = "gpt-3.5-turbo",
+                # model="text-davinci-003",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that writes song lyrics."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=300,
+                n=3
             )
+            lyrics1 = response.choices[0].message.content
+            lyrics2 = response.choices[1].message.content
+            lyrics3 = response.choices[2].message.content
 
-            try:
-                openai.api_key = OPENAI_API_KEY
-                response = openai.chat.completions.create(
-                    model = "gpt-3.5-turbo",
-                    # model="text-davinci-003",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant that writes song lyrics."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=300,
-                    n=3
-                )
-                lyrics1 = response.choices[0].message.content
-                lyrics2 = response.choices[1].message.content
-                lyrics3 = response.choices[2].message.content
-
-                response_data = {
-                    "lyrics": {
-                        "lyrics1": lyrics1,
-                        "lyrics2": lyrics2,
-                        "lyrics3": lyrics3,
-                    },
-                    "code": "M005",
-                    "status": 201,
-                    "message": "가사 생성 완료"
-                }
-                logging.info(f'INFO {client_ip} {current_time} POST /lyrics 201 lyrics created')
-                return Response(response_data, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                logging.error(f'ERROR {client_ip} {current_time} POST /lyrics 500 {str(e)}')
-                return Response({
-                    "code": "M005_1",
-                    "status": 500,
-                    "message": f"서버 오류: {str(e)}"
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            response_data = {
+                "lyrics": {
+                    "lyrics1": lyrics1,
+                    "lyrics2": lyrics2,
+                    "lyrics3": lyrics3,
+                },
+                "code": "M005",
+                "status": 201,
+                "message": "가사 생성 완료"
+            }
+            logging.info(f'INFO {client_ip} {current_time} POST /lyrics 201 lyrics created')
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logging.error(f'ERROR {client_ip} {current_time} POST /lyrics 500 {str(e)}')
+            return Response({
+                "code": "M005_1",
+                "status": 500,
+                "message": f"서버 오류: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MusicVideo(APIView):
     def post(self,request):
@@ -121,4 +121,11 @@ class MusicVideo(APIView):
             logging.warning(f'WARNING {client_ip} {current_time} POST /music_videos 404 does not existing')
             return Response(response_data, status=404)
         data = request.data.copy()
+        # lyrics 값을 가져옴
+        lyrics = data['lyrics']
+        # 벌스별로 나누기 위해 정규 표현식 사용, 그리고 [Verse], [Bridge] 태그 제거
+        verses = re.split(r'\[.*?\]\n', lyrics)
+        # 빈 문자열 제거
+        verses = [verse.strip() for verse in verses if verse.strip()]
+
 
