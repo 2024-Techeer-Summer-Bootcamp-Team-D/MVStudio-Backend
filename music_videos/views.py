@@ -6,9 +6,9 @@ from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import environ
-from .serializers import CreateLyricsSerializer
 from member.models import Member
-from .models import Genre
+from .models import Genre, Verse
+from .serializers import MusicVideoSerializer, VerseSerializer
 
 from datetime import datetime
 import re
@@ -24,7 +24,6 @@ class CreateLyricsView(APIView):
     @swagger_auto_schema(
         operation_summary="가사 생성 API",
         operation_description="이 API는 가사를 생성하는 데 사용됩니다.",
-        request_body=CreateLyricsSerializer,
         responses={
             201: openapi.Response(
                 description="가사 생성 완료",
@@ -52,8 +51,8 @@ class CreateLyricsView(APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         subject = request.data['subject']
-        genre_id = request.data['genre_id']
-        genres = Genre.objects.filter(id__in=genre_id)
+        genres_id = request.data['genres']
+        genres = Genre.objects.filter(id__in=genres_id)
         genre_names = [str(genre) for genre in genres]
         genre_names_str = ", ".join(genre_names)
         language = request.data['language']
@@ -121,6 +120,12 @@ class MusicVideo(APIView):
             logging.warning(f'WARNING {client_ip} {current_time} POST /music_videos 404 does not existing')
             return Response(response_data, status=404)
         data = request.data.copy()
+
+
+
+
+
+
         # lyrics 값을 가져옴
         lyrics = data['lyrics']
         # 벌스별로 나누기 위해 정규 표현식 사용, 그리고 [Verse], [Bridge] 태그 제거
@@ -128,4 +133,32 @@ class MusicVideo(APIView):
         # 빈 문자열 제거
         verses = [verse.strip() for verse in verses if verse.strip()]
 
+        # 뮤직비디오 data
+        data = {
+            "member_id": data['member_id'],
+            "subject": data['subject'],
+            "language": data['language'],
+            "vocal": data['vocal'],
+            "length": 0,
+            "cover_image": "url",
+            "mv_file": "file_url",
+            "genre_ids": [1, 3],
+            "instrument_ids": [2, 3],
+            "tempo": 1
+        }
 
+        # 뮤직비디오 및 벌스 객체 생성
+        serializer = MusicVideoSerializer(data=data)
+        if serializer.is_valid():
+            music_video = serializer.save()
+            for idx,verse in enumerate(verses):
+                verse_data = {
+                    "lyrics" : "verse",
+                    'start_time' : 'start_time',
+                    'end_time' : 'end_time',
+                    'sequence' : 'idx',
+                    'mv_id' : serializer.validated_data['id']
+                }
+                verse_serializer = VerseSerializer(data = verse_data)
+                if verse_serializer.is_valid():
+                    verse_serializer.save()

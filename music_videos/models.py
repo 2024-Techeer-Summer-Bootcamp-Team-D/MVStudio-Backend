@@ -19,32 +19,14 @@ class Instrument(models.Model):
     def __str__(self):
         return self.name
 
-class Tempo(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_deleted = models.BooleanField(default=False)
-    def __str__(self):
-        return self.name
 
-class Verse(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_deleted = models.BooleanField(default=False)
-    def __str__(self):
-        return self.name
 class MusicVideo(models.Model):
     id = models.AutoField(primary_key=True)
     member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
     subject = models.CharField(max_length=200)
     genre_id = models.ManyToManyField(Genre)
     instrument_id = models.ManyToManyField(Instrument, null=True)
-    tempo_id = models.ManyToManyField(Tempo)
+    tempo = models.CharField(max_length=10)
     language = models.CharField(max_length=100)
     vocal = models.CharField(max_length=100)
     length = models.IntegerField()
@@ -57,3 +39,15 @@ class MusicVideo(models.Model):
     def __str__(self):
         return self.subject
 
+class Verse(models.Model):
+    id = models.AutoField(primary_key=True)
+    lyrics = models.CharField(max_length=500)
+    sequence = models.IntegerField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    mv_id = models.ForeignKey(MusicVideo, on_delete=models.CASCADE, db_column='mv_id')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
+    def __str__(self):
+        return self.lyrics

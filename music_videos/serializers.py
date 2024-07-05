@@ -1,11 +1,11 @@
 # mv_creator/serializers.py
 
 from rest_framework import serializers
-from .models import MusicVideo, Genre
+from .models import MusicVideo, Genre, Verse
 from django.db import IntegrityError
 
 from rest_framework import serializers
-from .models import MusicVideo, Genre, Instrument, Tempo
+from .models import MusicVideo, Genre, Instrument
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -19,11 +19,10 @@ class InstrumentSerializer(serializers.ModelSerializer):
         model = Instrument
         fields = ['id', 'name']
 
-
-class TempoSerializer(serializers.ModelSerializer):
+class VerseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Tempo
-        fields = ['id', 'name']
+        model = Verse
+        fields = ['id', 'lyrics', 'start_time', 'end_time', 'sequence']
 
 
 class MusicVideoSerializer(serializers.ModelSerializer):
@@ -35,32 +34,25 @@ class MusicVideoSerializer(serializers.ModelSerializer):
     instrument_ids = serializers.PrimaryKeyRelatedField(queryset=Instrument.objects.all(), many=True, write_only=True,
                                                         source='instruments')
 
-    tempos = TempoSerializer(many=True, read_only=True)
-    tempo_ids = serializers.PrimaryKeyRelatedField(queryset=Tempo.objects.all(), many=True, write_only=True,
-                                                   source='tempos')
-
     class Meta:
         model = MusicVideo
         fields = [
             'id', 'member_id', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
-            'genres', 'genre_ids', 'instruments', 'instrument_ids', 'tempos', 'tempo_ids'
+            'genres', 'genre_ids', 'instruments', 'instrument_ids', 'tempo'
         ]
 
     def create(self, validated_data):
-        genres = validated_data.pop('genres')
-        instruments = validated_data.pop('instruments')
-        tempos = validated_data.pop('tempos')
+        genres = validated_data.pop('genres_ids')
+        instruments = validated_data.pop('instruments_ids')
         music_video = MusicVideo.objects.create(**validated_data)
         music_video.genres.set(genres)
         music_video.instruments.set(instruments)
-        music_video.tempos.set(tempos)
         return music_video
 
     def update(self, instance, validated_data):
         genres = validated_data.pop('genres', None)
         instruments = validated_data.pop('instruments', None)
-        tempos = validated_data.pop('tempos', None)
 
         instance.subject = validated_data.get('subject', instance.subject)
         instance.language = validated_data.get('language', instance.language)
@@ -76,7 +68,5 @@ class MusicVideoSerializer(serializers.ModelSerializer):
             instance.genres.set(genres)
         if instruments is not None:
             instance.instruments.set(instruments)
-        if tempos is not None:
-            instance.tempos.set(tempos)
 
         return instance
