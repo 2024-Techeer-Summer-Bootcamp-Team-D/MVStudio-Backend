@@ -5,7 +5,9 @@ from rest_framework import status
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+
 from django.conf import settings
+from django.core.paginator import Paginator
 from member.models import Member
 from .models import Genre, Verse, Instrument, MusicVideo
 from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer
@@ -398,6 +400,112 @@ class MusicVideoView(APIView):
             }
             logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
             return Response(response_data, status=status.HTTP_201_CREATED)
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 목록 조회",
+        operation_description="모든 뮤직비디오 목록을 조회합니다. 정렬 및 페이지네이션 기능을 지원합니다.",
+        manual_parameters=[
+            openapi.Parameter(
+                'sort',
+                openapi.IN_QUERY,
+                description="정렬 기준 (예: views, created_at 등)",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'page',
+                openapi.IN_QUERY,
+                description="페이지 번호 (기본값: 1)",
+                type=openapi.TYPE_INTEGER,
+                default=1
+            ),
+            openapi.Parameter(
+                'size',
+                openapi.IN_QUERY,
+                description="페이지당 아이템 수 (기본값: 10)",
+                type=openapi.TYPE_INTEGER,
+                default=10
+            ),
+            openapi.Parameter(
+                'member_id',
+                openapi.IN_QUERY,
+                description="멤버 ID (필터링 용도)",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 목록 조회 성공",
+                examples={
+                    "application/json": {
+                        "music_videos": [
+                            # 여기에 예시 데이터를 포함하세요
+                        ],
+                        "code": "M004",
+                        "HTTPstatus": 200,
+                        "message": "뮤직비디오 정보 조회 성공",
+                        "pagination": {
+                            "current_page": 1,
+                            "next_page": True,
+                            "page_size": 10,
+                            "total_pages": 5,
+                            "total_items": 50,
+                            "last_page": False
+                        }
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        queryset = MusicVideo.objects.all()
+
+        message = '뮤직비디오 정보 조회 성공'
+
+        # 멤버 ID 필터링
+        member_id = request.query_params.get('member_id', None)
+        # 정렬
+        sort = request.query_params.get('sort', None)
+
+
+        if member_id:
+            queryset = queryset.filter(member_id=member_id)
+            message = f'사용자 뮤직비디오 정보 조회 성공'
+        if sort:
+            queryset = queryset.order_by(f'-{sort}')
+            message = f"뮤직비디오 {sort}순 정보 조회 성공"
+
+        # 결과가 없는 경우 처리
+        if not queryset.exists():
+            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 404 not found')
+            return Response({"error": "music videos not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # 페이지네이션
+        page = request.query_params.get('page',1)
+        size = request.query_params.get('size',10)
+        paginator = Paginator(queryset, size)
+        paginated_queryset = paginator.get_page(page)
+
+        serializer = MusicVideoDetailSerializer(paginated_queryset, many=True)
+
+        response_data = {
+            'music_videos': serializer.data,
+            "code": "M004",
+            "HTTPstatus": 200,
+            "message": message,
+            "pagination": {
+                "current_page": paginated_queryset.number,
+                "next_page": paginated_queryset.has_next(),
+                "page_size": size,
+                "total_pages": paginator.num_pages,
+                "total_items": paginator.count,
+                "last_page": not paginated_queryset.has_next()
+            }
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
 
 class GenreListView(APIView):
     @swagger_auto_schema(
@@ -514,6 +622,35 @@ class InstrumentListView(APIView):
 
 class MusicVideoDetailView(APIView):
 
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 상세 정보 조회",
+        operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 상세 정보 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M003",
+                        "status": 200,
+                        "message": "뮤직비디오 상세 정보 조회 성공",
+                        "data": {
+                            # 여기에 직렬화된 뮤직비디오 상세 정보의 예시를 포함하세요
+                        }
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 정보가 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M003_1",
+                        "status": 404,
+                        "message": "뮤직비디오 정보가 없습니다."
+                    }
+                }
+            )
+        }
+    )
     def get(self, request, music_video_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -534,5 +671,7 @@ class MusicVideoDetailView(APIView):
             "status": 200,
             "message": "뮤직비디오 상세 정보 조회 성공"
         }
-        logging.info(f'INFO {client_ip} {current_time} GET /members 200 signup success')
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
         return Response(serializer.data, status=200)
+
+
