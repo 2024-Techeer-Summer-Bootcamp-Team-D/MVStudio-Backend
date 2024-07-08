@@ -279,10 +279,7 @@ def mv_create(image_urls, output_size, audio_url, member_id):
         print("유효한 이미지가 없어 비디오를 생성할 수 없습니다.")
 
 
-
-
 class MusicVideoView(APIView):
-
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -507,6 +504,66 @@ class MusicVideoView(APIView):
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class MusicVideoDeleteView(APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 삭제 API",
+        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 삭제 성공",
+                examples={
+                    "application/json": {
+                        "code": "M004",
+                        "status": 200,
+                        "message": "뮤직비디오 삭제 성공",
+                        "data": {
+                            "member_id": "member_id",
+                            "subject": "subject",
+                            "is_deleted": "is_deleted",
+                            "message": "뮤직비디오 삭제 성공"
+                        }
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="해당하는 뮤직비디오가 존재하지 않습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M004_1",
+                        "status": 404,
+                        "message": "해당하는 뮤직비디오가 존재하지 않습니다."
+                    }
+                }
+            ),
+        }
+    )
+
+    def patch(self, request, music_video_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            music_video = MusicVideo.objects.get(id=music_video_id)
+        except MusicVideo.DoesNotExist:
+            response_data = {
+                "code": "M004_1",
+                "status": 404,
+                "message": "해당하는 뮤직비디오가 존재하지 않습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
+            return Response(response_data, status=404)
+        music_video.is_deleted = True
+        music_video.save()
+        serializer = MusicVideoDeleteSerializer(music_video)
+        response_data = {
+            "code": "M004",
+            "status": 200,
+            "message": "뮤직비디오 삭제 성공",
+            "data": serializer.data
+        }
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
+        return Response(response_data, status=200)
 
 
 class GenreListView(APIView):
