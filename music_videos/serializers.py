@@ -27,19 +27,17 @@ class VerseSerializer(serializers.ModelSerializer):
 
 class MusicVideoSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
-    genre_ids = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all(), many=True, write_only=True,
-                                                   source='genres')
+    genres_ids = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all(), many=True, write_only=True)
 
     instruments = InstrumentSerializer(many=True, read_only=True)
-    instrument_ids = serializers.PrimaryKeyRelatedField(queryset=Instrument.objects.all(), many=True, write_only=True,
-                                                        source='instruments')
+    instruments_ids = serializers.PrimaryKeyRelatedField(queryset=Instrument.objects.all(), many=True, write_only=True)
 
     class Meta:
         model = MusicVideo
         fields = [
             'id', 'member_id', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
-            'genres', 'genre_ids', 'instruments', 'instrument_ids', 'tempo'
+            'genres', 'genres_ids', 'instruments', 'instruments_ids', 'tempo'
         ]
 
     def create(self, validated_data):
@@ -47,10 +45,15 @@ class MusicVideoSerializer(serializers.ModelSerializer):
         instruments = validated_data.pop('instruments_ids')
         try:
             music_video = MusicVideo.objects.create(**validated_data)
-        except:
-            print('nono')
-        music_video.genres.set(genres)
-        music_video.instruments.set(instruments)
+            music_video.genre_id.set(genres)
+            music_video.instrument_id.set(instruments)
+        except Exception as e:
+            print(str(e))
+            return {
+                "code": "M005_1",
+                "status": 500,
+                "message": f"서버 오류: {str(e)}"
+            }
         return music_video
 
     def update(self, instance, validated_data):

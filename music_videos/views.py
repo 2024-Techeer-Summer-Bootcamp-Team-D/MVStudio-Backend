@@ -5,6 +5,7 @@ from rest_framework import status
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.conf import settings
 import environ
 from member.models import Member
 from .models import Genre, Verse, Instrument
@@ -14,11 +15,18 @@ from datetime import datetime
 import re
 import logging
 import openai
+import requests
+import json
+import time
+import boto3
+import os
+import cv2
+import numpy as np
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy.video.VideoClip import ImageClip
 
-env = environ.Env()
-environ.Env.read_env()
-
-OPENAI_API_KEY = env('OPENAI_API_KEY')
+from botocore.exceptions import NoCredentialsError
+from io import BytesIO
 
 class CreateLyricsView(APIView):
     @swagger_auto_schema(
@@ -80,7 +88,7 @@ class CreateLyricsView(APIView):
         )
 
         try:
-            openai.api_key = OPENAI_API_KEY
+            openai.api_key = settings.OPENAI_API_KEY
             response = openai.chat.completions.create(
                 model = "gpt-3.5-turbo",
                 # model="text-davinci-003",
@@ -116,6 +124,166 @@ class CreateLyricsView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# Dall-e 이미지 프롬프팅 코드
+def Dall_e_image(verses, subject, vocal, genre_names_str):
+    openai.api_key = settings.OPENAI_API_KEY
+    image_url = []
+
+    for i in range(4):
+        prompt = f'''
+        It's the image of a music video.
+        The title of the song is {subject}.
+        The main character of the music video is an animated {vocal} character and the genre of the song is a {genre_names_str}.
+        
+        {verses[i]}
+        '''
+        try:
+            response = openai.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size="1024x1792",
+                quality="standard",
+                n=1,
+            )
+            image_url.append(response.data[0].url)
+        except openai.error.InvalidRequestError as e:
+            if e.code == 'content_policy_violation':
+                print(f"Content policy violation for prompt: {prompt}")
+                i = i - 1
+                pass
+            else:
+                print(f"Unhandled InvalidRequestError: {e}")
+                image_url.append("Error: Unhandled InvalidRequestError")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            image_url.append("Error: Unexpected error")
+
+    return image_url
+
+def suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject):
+    url = "https://api.sunoapi.com/api/v1/suno/create"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {settings.SUNO_API_KEY}"
+    }
+    data = {
+        "prompt": (
+            lyrics
+        ),
+        "tags": f"{genre_names_str},{instruments_str},{tempo},{vocal}",
+        "custom_mode": True,
+        "title": subject
+    }
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+
+    if response.status_code == 200:
+        return response.json()
+
+def suno_music_get(task_id):
+
+    url = f"https://api.sunoapi.com/api/v1/suno/clip/{task_id}"
+    headers = {
+        "Authorization": f"Bearer {settings.SUNO_API_KEY}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+
+
+
+def mv_create(image_urls, output_size, audio_url, member_id):
+    # Function to read an image from a URL and return it as a numpy array
+    def read_image_from_url(url):
+        response = requests.get(url)
+        image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
+        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        if image is not None:
+            return image
+        return None  # Return None if the image is invalid
+
+    # Function to download an audio file from a URL
+    def download_audio(url, filename):
+        response = requests.get(url)
+        with open(filename, 'wb') as f:
+            f.write(response.content)
+
+    # Function to create a video clip from an image
+    def create_image_clip(image, duration, size):
+        img = cv2.resize(image, size)
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        clip = ImageClip(img_rgb).set_duration(duration)
+        return clip
+
+    # Function to upload a file to S3 and return the URL
+    def upload_to_s3(file_obj, member_id, timestamp):
+        s3 = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME,
+                          aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                          aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+        s3_bucket = settings.AWS_STORAGE_BUCKET_NAME
+
+        s3_key = f"mv_videos/{member_id}_{timestamp}.mp4"
+        try:
+            s3.upload_file(file_obj, s3_bucket, s3_key)
+            url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}{s3_key}"
+            return url
+        except NoCredentialsError:
+            print("Credentials not available")
+            return None
+
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+
+    # Temporary filename for the downloaded audio file
+    audio_filename = f'temp_audio_{timestamp}.mp3'
+    # Temporary filename for the video file
+    video_filename = f'temp_video_{timestamp}.mp4'
+    # Download the audio file
+    download_audio(audio_url, audio_filename)
+
+    # 오디오 파일의 길이를 네 등분하여 각 클립의 길이로 설정
+    audio = AudioFileClip(audio_filename)
+    total_duration = audio.duration
+    clip_duration = total_duration / 4
+
+    # 이미지 읽기 및 비디오 클립 생성
+    image_clips = []
+    for url in image_urls:
+        img = read_image_from_url(url)
+        if img is not None:
+            clip = create_image_clip(img, clip_duration, output_size)
+            image_clips.append(clip)
+        else:
+            print(f"{url}에서 이미지를 읽거나 처리하는 데 실패했습니다.")
+
+    # 클립들을 크로스페이드 트랜지션으로 연결
+    if image_clips:
+        for i in range(len(image_clips) - 1):
+            image_clips[i] = image_clips[i].crossfadeout(1)  # 1초 크로스페이드 아웃
+            image_clips[i+1] = image_clips[i + 1].crossfadein(1)  # 1초 크로스페이드 인
+
+        video = concatenate_videoclips(image_clips, method="compose")
+
+        # 비디오에 오디오 추가
+        final_video = video.set_audio(audio)
+
+        final_video.write_videofile(video_filename, codec='libx264', fps=24)
+
+        # 비디오를 S3에 업로드
+        video_url = upload_to_s3(video_filename, member_id, timestamp)
+        os.remove(audio_filename)
+        os.remove(video_filename)
+        if video_url:
+            return video_url
+        else:
+            print("비디오를 S3에 업로드하는 데 실패했습니다.")
+    else:
+        os.remove(audio_filename)
+        print("유효한 이미지가 없어 비디오를 생성할 수 없습니다.")
+
+
+
 
 class MusicVideo(APIView):
 
@@ -138,50 +306,84 @@ class MusicVideo(APIView):
     def post(self,request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        subject = request.data['subject']
+        vocal = request.data['vocal']
+        tempo = request.data['tempo']
         member_id = request.data['member_id']
-        try:
-            member = Member.objects.get(id=member_id)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "P002",
-                "status": 404,
-                "message": "회원 정보가 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} POST /music_videos 404 does not existing')
-            return Response(response_data, status=404)
-        data = request.data.copy()
+        language = request.data['language']
+        # 장르 쉼표로 구분
+        genres_ids = request.data['genres_ids']
+        genres = Genre.objects.filter(id__in=genres_ids)
+        genre_names = [str(genre) for genre in genres]
+        genre_names_str = ", ".join(genre_names)
 
-
-
-
+        instruments_ids = request.data['instruments_ids']
+        instruments = Genre.objects.filter(id__in=instruments_ids)
+        instruments_names = [str(instrument) for instrument in instruments]
+        instruments_str = ", ".join(instruments_names)
 
 
         # lyrics 값을 가져옴
-        lyrics = data['lyrics']
+        lyrics = request.data['lyrics']
         # 벌스별로 나누기 위해 정규 표현식 사용, 그리고 [Verse], [Bridge] 태그 제거
         verses = re.split(r'\[.*?\]\n', lyrics)
         # 빈 문자열 제거
         verses = [verse.strip() for verse in verses if verse.strip()]
 
+        # Dall-e 이미지 프롬프팅 코드
+        try:
+            image_urls = Dall_e_image(verses,subject,vocal,genre_names_str)
+        except Exception as e:
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_videos 500 {str(e)}')
+            return Response({
+                "code": "M005_1",
+                "status": 500,
+                "message": f"서버 오류: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Suno 음악 프롬프팅 코드
+        try:
+            response = suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
+            task_id = response['data']['task_id']
+            while(True):
+                time.sleep(2)
+                result = suno_music_get(task_id)
+                suno_status = result['data']['status']
+                if suno_status=='completed':
+                    break
+            get_key = list(result['data']['clips'].keys())[1]
+            audio_url = result['data']['clips'][get_key]['audio_url']
+            cover_image_url = result['data']['clips'][get_key]['image_url']
+            duration = result['data']['clips'][get_key]['metadata']['duration']
+
+        except Exception as e:
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_videos 500 {str(e)}')
+            return Response({
+                "code": "M005_1",
+                "status": 500,
+                "message": f"서버 오류: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # music video Create
+        output_size = (1024, 1792)
+
+        video_url = mv_create(image_urls, output_size, audio_url, member_id)
+
         # 뮤직비디오 data
         data = {
-            "member_id": data['member_id'],
-            "subject": data['subject'],
-            "language": data['language'],
-            "vocal": data['vocal'],
-            "length": 0,
-            "cover_image": "url",
-            "mv_file": "file_url",
-            "genres_ids": data['genres_ids'],
-            "instruments_ids": data['instruments_ids'],
-            "tempo": data['tempo']
+            "member_id": member_id,
+            "subject": subject,
+            "language": language,
+            "vocal": vocal,
+            "length": duration,
+            "cover_image": cover_image_url,
+            "mv_file": video_url,
+            "genres_ids": genres_ids,
+            "instruments_ids": instruments_ids,
+            "tempo": tempo
         }
-
-        print(verses)
         # 뮤직비디오 및 벌스 객체 생성
         serializer = MusicVideoSerializer(data=data)
         if serializer.is_valid():
-            print("ok")
             music_video = serializer.save()
             # for idx,verse in enumerate(verses):
             #     verse_data = {
@@ -196,10 +398,9 @@ class MusicVideo(APIView):
             #         verse_serializer.save()
 
             response_data = {
-                "lyrics": serializer.validated_data['id'],
-                "code": "M005",
+                "code": "M002",
                 "status": 201,
-                "message": "가사 생성 완료"
+                "message": "뮤직비디오 생성 완료"
             }
             logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
             return Response(response_data, status=status.HTTP_201_CREATED)
