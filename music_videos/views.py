@@ -460,7 +460,7 @@ class MusicVideoView(APIView):
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        queryset = MusicVideo.objects.all()
+        queryset = MusicVideo.objects.filter(is_deleted=0)
 
         message = '뮤직비디오 정보 조회 성공'
 
@@ -656,6 +656,12 @@ class MusicVideoDetailView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             music_video = MusicVideo.objects.get(id=music_video_id)
+            if(music_video.is_deleted==1):
+                raise Member.DoesNotExist("Member does not exist")
+            # recently_viewed 값 +1
+            music_video.recently_viewed += 1
+            # 변경 사항 저장
+            music_video.save()
         except Member.DoesNotExist:
             response_data = {
                 "code": "M003_1",

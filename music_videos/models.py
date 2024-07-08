@@ -33,6 +33,7 @@ class MusicVideo(models.Model):
     length = models.FloatField()
     cover_image = models.CharField(max_length=1000)
     mv_file = models.CharField(max_length=1000)
+    recently_viewed = models.IntegerField(default=0)
     views = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
