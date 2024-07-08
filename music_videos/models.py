@@ -29,7 +29,7 @@ class MusicVideo(models.Model):
     tempo = models.CharField(max_length=10)
     language = models.CharField(max_length=100)
     vocal = models.CharField(max_length=100)
-    length = models.IntegerField()
+    length = models.FloatField()
     cover_image = models.CharField(max_length=1000)
     mv_file = models.CharField(max_length=1000)
     views = models.IntegerField(default=0)
