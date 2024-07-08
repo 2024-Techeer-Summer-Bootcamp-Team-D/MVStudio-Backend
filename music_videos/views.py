@@ -6,10 +6,9 @@ from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.conf import settings
-import environ
 from member.models import Member
-from .models import Genre, Verse, Instrument
-from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer
+from .models import Genre, Verse, Instrument, MusicVideo
+from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer
 
 from datetime import datetime
 import re
@@ -26,7 +25,6 @@ from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.VideoClip import ImageClip
 
 from botocore.exceptions import NoCredentialsError
-from io import BytesIO
 
 class CreateLyricsView(APIView):
     @swagger_auto_schema(
@@ -146,17 +144,12 @@ def Dall_e_image(verses, subject, vocal, genre_names_str):
                 n=1,
             )
             image_url.append(response.data[0].url)
-        except openai.error.InvalidRequestError as e:
-            if e.code == 'content_policy_violation':
-                print(f"Content policy violation for prompt: {prompt}")
+        except Exception as e:
+            if 'content_policy_violation' in str(e):
                 i = i - 1
                 pass
             else:
-                print(f"Unhandled InvalidRequestError: {e}")
-                image_url.append("Error: Unhandled InvalidRequestError")
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            image_url.append("Error: Unexpected error")
+                print(f"Unhandled Exception: {e}")
 
     return image_url
 
@@ -285,7 +278,7 @@ def mv_create(image_urls, output_size, audio_url, member_id):
 
 
 
-class MusicVideo(APIView):
+class MusicVideoView(APIView):
 
     @swagger_auto_schema(
         request_body=openapi.Schema(
@@ -518,3 +511,28 @@ class InstrumentListView(APIView):
             }
             logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed')
             return Response(response_data, status=500)
+
+class MusicVideoDetailView(APIView):
+
+    def get(self, request, music_video_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            music_video = MusicVideo.objects.get(id=music_video_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M003_1",
+                "status": 404,
+                "message": "뮤직비디오 정보가 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /music_videos 404 does not existing')
+            return Response(response_data, status=404)
+
+        serializer = MusicVideoDetailSerializer(music_video)
+        response_data = {
+            "code": "M003",
+            "status": 200,
+            "message": "뮤직비디오 상세 정보 조회 성공"
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /members 200 signup success')
+        return Response(serializer.data, status=200)

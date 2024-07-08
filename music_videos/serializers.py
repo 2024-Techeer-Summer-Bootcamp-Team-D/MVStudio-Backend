@@ -76,3 +76,14 @@ class MusicVideoSerializer(serializers.ModelSerializer):
             instance.instruments.set(instruments)
 
         return instance
+
+class MusicVideoDetailSerializer(serializers.ModelSerializer):
+    member_name = serializers.SerializerMethodField()
+    class Meta:
+        model = MusicVideo
+        fields = [
+            'subject', 'member_id', 'length', 'mv_file', 'views', 'lyrics', 'member_name'
+        ]
+
+    def get_member_name(self,obj):
+        return obj.member_id.nickname
