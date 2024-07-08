@@ -336,7 +336,7 @@ class MemberLoginView(APIView):
 class CountryListView(APIView):
     @swagger_auto_schema(
         operation_summary="국가 리스트 조회 API",
-        operation_description="이 API는 사용자가 회원가입할 때 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",
+        operation_description="이 API는 사용자의 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
                 description="국가 리스트 조회 성공",
