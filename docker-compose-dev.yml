@@ -1,22 +1,6 @@
 version: '3'
 
 services:
-#  db:
-#    image: mysql:8.0
-#    container_name: MVStudio-MySQL
-#    ports:
-#      - "3306:3306"
-#    volumes:
-#      - db_data:/var/lib/mysql
-#    environment:
-#      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-#      MYSQL_DATABASE: ${MYSQL_DATABASE}
-#      MYSQL_USER: ${MYSQL_USER}
-#      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-#
-#    networks:
-#      - mvs
-
   backend:
     container_name: MVStudio-Backend
     build:
@@ -45,9 +29,4 @@ services:
             python manage.py runserver 0.0.0.0:8000"
 
 volumes:
-  db_data:
   static_volume:
-
-#networks:
-#  mvs:
-#    driver: bridge

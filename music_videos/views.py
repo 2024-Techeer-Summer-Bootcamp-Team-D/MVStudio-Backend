@@ -10,7 +10,7 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
-from .models import Genre, Verse, Instrument, MusicVideo, MusicVideoManager
+from .models import Genre, Verse, Instrument, MusicVideo
 from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer
 
 from datetime import datetime
@@ -458,7 +458,7 @@ class MusicVideoView(APIView):
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        queryset = MusicVideoManager.objects.all()
+        queryset = MusicVideo.objects.all()
 
         message = '뮤직비디오 정보 조회 성공'
 
@@ -471,7 +471,11 @@ class MusicVideoView(APIView):
         if member_id:
             queryset = queryset.filter(member_id=member_id)
             message = f'사용자 뮤직비디오 정보 조회 성공'
-        if sort:
+        if (sort=='countries'):
+            member = Member.objects.get(id=member_id)
+            members = Member.objects.filter(country_id=member.country_id)
+            queryset = MusicVideo.objects.filter(member_id__in=members)
+        else:
             queryset = queryset.order_by(f'-{sort}')
             message = f"뮤직비디오 {sort}순 정보 조회 성공"
 
@@ -714,7 +718,7 @@ class MusicVideoDetailView(APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideoManager.objects.get(id=music_video_id)
+            music_video = MusicVideo.objects.get(id=music_video_id)
             # recently_viewed 값 +1
             music_video.recently_viewed += 1
             # 변경 사항 저장
