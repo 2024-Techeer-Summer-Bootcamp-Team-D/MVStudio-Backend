@@ -76,3 +76,10 @@ class MusicVideoSerializer(serializers.ModelSerializer):
             instance.instruments.set(instruments)
 
         return instance
+
+class MusicVideoDeleteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MusicVideo
+        fields = [
+            'id', 'member_id', 'subject', 'is_deleted'
+        ]
