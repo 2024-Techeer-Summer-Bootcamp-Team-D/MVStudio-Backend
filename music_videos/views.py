@@ -10,7 +10,11 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
+<<<<<<< Updated upstream
 from .models import Genre, Verse, Instrument, MusicVideo
+=======
+from .models import Genre, Verse, Instrument, MusicVideo, MusicVideoManager, History
+>>>>>>> Stashed changes
 from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer
 
 from datetime import datetime
@@ -739,6 +743,5 @@ class MusicVideoDetailView(APIView):
             "message": "뮤직비디오 상세 정보 조회 성공"
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
-        return Response(serializer.data, status=200)
 
 

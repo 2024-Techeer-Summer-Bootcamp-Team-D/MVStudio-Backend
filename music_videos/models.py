@@ -60,3 +60,12 @@ class Verse(models.Model):
     is_deleted = models.BooleanField(default=False)
     def __str__(self):
         return self.lyrics
+
+class History(models.Model):
+    id = models.AutoField(primary_key=True)
+    mv_id = models.ForeignKey(MusicVideo, on_delete=models.CASCADE, db_column='mv_id')
+    member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
+    current_play_time = models.IntegerField(default=0)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
