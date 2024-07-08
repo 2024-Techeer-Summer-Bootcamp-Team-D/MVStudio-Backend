@@ -7,8 +7,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import environ
 from member.models import Member
-from .models import Genre, Verse
-from .serializers import MusicVideoSerializer, VerseSerializer
+from .models import Genre, Verse, Instrument
+from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer
 
 from datetime import datetime
 import re
@@ -203,3 +203,116 @@ class MusicVideo(APIView):
             }
             logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
             return Response(response_data, status=status.HTTP_201_CREATED)
+
+class GenreListView(APIView):
+    @swagger_auto_schema(
+        operation_summary="장르 리스트 조회 API",
+        operation_description="이 API는 사용자가 원하는 장르를 선택할 수 있도록 장르 리스트를 제공하는 기능을 합니다.",
+        responses={
+            200: openapi.Response(
+                description="장르 리스트 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M005",
+                        "status": 200,
+                        "message": "장르 리스트 조회 성공",
+                        "data": {
+                            "name": "string",
+                            "code": "M005",
+                            "HTTPstatus": 200,
+                            "message": "장르 리스트 조회 성공"
+                        }
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="장르 리스트를 불러올 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M005_1",
+                        "status": 500,
+                        "message": "장르 리스트를 불러올 수 없습니다."
+                    }
+                }
+            ),
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            genres = Genre.objects.all()
+            serializer = GenreSerializer(genres, many=True)
+            response_data = {
+                "code": "M005",
+                "status": 200,
+                "message": "장르 리스트 조회 성공",
+                "data": serializer.data
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /genre_list 200 success')
+            return Response(response_data, status=200)
+        except Exception as e:
+            response_data = {
+                "code": "M005_1",
+                "status": 500,
+                "message": "장르 리스트를 불러올 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed')
+            return Response(response_data, status=500)
+
+class InstrumentListView(APIView):
+    @swagger_auto_schema(
+        operation_summary="악기 리스트 조회 API",
+        operation_description="이 API는 사용자가 원하는 악기를 선택할 수 있도록 악기 리스트를 제공하는 기능을 합니다.",
+        responses={
+            200: openapi.Response(
+                description="악기 리스트 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M006",
+                        "status": 200,
+                        "message": "악기 리스트 조회 성공",
+                        "data": {
+                            "name": "string",
+                            "code": "M006",
+                            "HTTPstatus": 200,
+                            "message": "악기 리스트 조회 성공"
+                        }
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="악기 리스트를 불러올 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M006_1",
+                        "status": 500,
+                        "message": "악기 리스트를 불러올 수 없습니다."
+                    }
+                }
+            ),
+        }
+    )
+
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            instruments = Instrument.objects.all()
+            serializer = GenreSerializer(instruments, many=True)
+            response_data = {
+                "code": "M006",
+                "status": 200,
+                "message": "악기 리스트 조회 성공",
+                "data": serializer.data
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /instrument_list 200 success')
+            return Response(response_data, status=200)
+        except Exception as e:
+            response_data = {
+                "code": "M006_1",
+                "status": 500,
+                "message": "악기 리스트를 불러올 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed')
+            return Response(response_data, status=500)

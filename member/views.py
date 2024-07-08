@@ -336,7 +336,7 @@ class MemberLoginView(APIView):
 class CountryListView(APIView):
     @swagger_auto_schema(
         operation_summary="국가 리스트 조회 API",
-        operation_description="이 API는 사용자가 회원가입할 때 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",
+        operation_description="이 API는 사용자의 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
                 description="국가 리스트 조회 성공",
@@ -354,13 +354,13 @@ class CountryListView(APIView):
                     }
                 }
             ),
-            404: openapi.Response(
-                description="국가 리스트가 존재하지 않습니다.",
+            500: openapi.Response(
+                description="국가 리스트를 불러올 수 없습니다.",
                 examples={
                     "application/json": {
                         "code": "P003_1",
-                        "status": 404,
-                        "message": "국가 리스트가 존재하지 않습니다."
+                        "status": 500,
+                        "message": "국가 리스트를 불러올 수 없습니다."
                     }
                 }
             ),
@@ -371,20 +371,20 @@ class CountryListView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             countries = Country.objects.all()
-        except Country.DoesNotExist:
+            serializer = CountrySerializer(countries, many=True)
+            response_data = {
+                "code": "P003",
+                "status": 200,
+                "message": "국가 리스트 조회 성공",
+                "data": serializer.data
+            }
+            logger.info(f'INFO {client_ip} {current_time} GET /country_list 200 success')
+            return Response(response_data, status=200)
+        except Exception as e:
             response_data = {
                 "code": "P003_1",
-                "status": 404,
-                "message": "국가 리스트가 존재하지 않습니다."
+                "status": 500,
+                "message": "국가 리스트를 불러올 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 404 does not existing')
-            return Response(response_data, status=404)
-
-        serializer = CountrySerializer(countries, many=True)
-        response_data = {
-            "code": "P003",
-            "status": 200,
-            "message": "국가 리스트 조회 성공"
-        }
-        logger.info(f'INFO {client_ip} {current_time} GET /country_list 200 success')
-        return Response(serializer.data, status=200)
+            logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 500 failed')
+            return Response(response_data, status=500)
