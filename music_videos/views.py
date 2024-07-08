@@ -743,5 +743,4 @@ class MusicVideoDetailView(APIView):
             "message": "뮤직비디오 상세 정보 조회 성공"
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
-
-
+        return Response(serializer.data, status=200)
