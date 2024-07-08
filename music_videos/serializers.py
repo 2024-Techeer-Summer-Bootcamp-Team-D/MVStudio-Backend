@@ -77,6 +77,13 @@ class MusicVideoSerializer(serializers.ModelSerializer):
 
         return instance
 
+class MusicVideoDeleteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MusicVideo
+        fields = [
+            'id', 'member_id', 'subject', 'is_deleted'
+        ]
+
 class MusicVideoDetailSerializer(serializers.ModelSerializer):
     member_name = serializers.SerializerMethodField()
     class Meta:

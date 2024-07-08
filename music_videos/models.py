@@ -19,6 +19,10 @@ class Instrument(models.Model):
     def __str__(self):
         return self.name
 
+class MusicVideoManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
 
 class MusicVideo(models.Model):
     id = models.AutoField(primary_key=True)
@@ -38,6 +42,9 @@ class MusicVideo(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
+
+    objects = MusicVideoManager() # is_deleted = False 만 조회
+    all_objects = models.Manager()
     def __str__(self):
         return self.subject
 

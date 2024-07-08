@@ -1,3 +1,4 @@
+from urllib import request
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,7 +11,7 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
 from .models import Genre, Verse, Instrument, MusicVideo
-from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer
+from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer
 
 from datetime import datetime
 import re
@@ -23,7 +24,7 @@ import boto3
 import os
 import cv2
 import numpy as np
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy.editor import AudioFileClip, concatenate_videoclips
 from moviepy.video.VideoClip import ImageClip
 
 from botocore.exceptions import NoCredentialsError
@@ -506,6 +507,7 @@ class MusicVideoView(APIView):
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
+
 
 class GenreListView(APIView):
     @swagger_auto_schema(
