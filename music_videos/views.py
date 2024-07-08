@@ -10,7 +10,7 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
-from .models import Genre, Verse, Instrument, MusicVideo
+from .models import Genre, Verse, Instrument, MusicVideo, MusicVideoManager
 from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer
 
 from datetime import datetime
@@ -458,7 +458,7 @@ class MusicVideoView(APIView):
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        queryset = MusicVideo.objects.filter(is_deleted=0)
+        queryset = MusicVideoManager.objects.all()
 
         message = '뮤직비디오 정보 조회 성공'
 
@@ -521,7 +521,7 @@ class MusicVideoDeleteView(APIView):
                         "data": {
                             "member_id": "member_id",
                             "subject": "subject",
-                            "is_deleted": "is_deleted",
+                            "is_deleted": "1",
                             "message": "뮤직비디오 삭제 성공"
                         }
                     }
@@ -540,7 +540,7 @@ class MusicVideoDeleteView(APIView):
         }
     )
 
-    def patch(self, request, music_video_id):
+    def delete(self, request, music_video_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
@@ -714,14 +714,12 @@ class MusicVideoDetailView(APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
-            if(music_video.is_deleted==1):
-                raise Member.DoesNotExist("Member does not exist")
+            music_video = MusicVideoManager.objects.get(id=music_video_id)
             # recently_viewed 값 +1
             music_video.recently_viewed += 1
             # 변경 사항 저장
             music_video.save()
-        except Member.DoesNotExist:
+        except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M003_1",
                 "status": 404,
