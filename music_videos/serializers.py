@@ -37,7 +37,7 @@ class MusicVideoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'member_id', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
-            'genres', 'genres_ids', 'instruments', 'instruments_ids', 'tempo'
+            'genres', 'genres_ids', 'instruments', 'instruments_ids', 'tempo', 'lyrics'
         ]
 
     def create(self, validated_data):

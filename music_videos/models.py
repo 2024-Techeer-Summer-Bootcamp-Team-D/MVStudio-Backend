@@ -24,6 +24,7 @@ class MusicVideo(models.Model):
     id = models.AutoField(primary_key=True)
     member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
     subject = models.CharField(max_length=200)
+    lyrics = models.CharField(max_length=2000)
     genre_id = models.ManyToManyField(Genre)
     instrument_id = models.ManyToManyField(Instrument, null=True)
     tempo = models.CharField(max_length=10)

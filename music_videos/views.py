@@ -377,6 +377,7 @@ class MusicVideo(APIView):
             "length": duration,
             "cover_image": cover_image_url,
             "mv_file": video_url,
+            "lyrics": lyrics,
             "genres_ids": genres_ids,
             "instruments_ids": instruments_ids,
             "tempo": tempo
