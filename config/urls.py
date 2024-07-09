@@ -21,7 +21,7 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path("api/v1/music-videos/", include('music_videos.urls')),
     path("api/v1/members/", include('member.urls')),
-    path("api/v1/oauth/", include('oauth.urls')),
+    path("oauth/", include('oauth.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
