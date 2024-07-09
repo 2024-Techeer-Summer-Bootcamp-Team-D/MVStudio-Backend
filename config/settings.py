@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "member",
     "storages",
     "social_django",
+    "oauth"
 ]
 
 MIDDLEWARE = [
@@ -174,6 +175,13 @@ OPENAI_API_KEY = env('OPENAI_API_KEY')
 # OAuth 2.0
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
+
+# Django 세션 설정
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
 
