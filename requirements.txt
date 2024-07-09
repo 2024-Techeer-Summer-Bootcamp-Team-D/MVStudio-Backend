@@ -25,3 +25,5 @@ opencv-python-headless==4.10.0.84
 moviepy==1.0.3
 requests==2.32.3
 ffmpeg-python==0.2.0
+celery==5.4.0
+django-celery-beat==2.6.0
