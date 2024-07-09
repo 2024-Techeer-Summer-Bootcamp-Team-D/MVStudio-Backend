@@ -80,14 +80,24 @@ class MusicVideoDeleteSerializer(serializers.ModelSerializer):
 
 class MusicVideoDetailSerializer(serializers.ModelSerializer):
     member_name = serializers.SerializerMethodField()
+    genres = serializers.SerializerMethodField()
+    instruments = serializers.SerializerMethodField()
     class Meta:
         model = MusicVideo
         fields = [
-            'subject', 'member_id', 'length', 'mv_file', 'views', 'lyrics', 'member_name'
+            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'language', 'vocal', 'tempo'
         ]
 
-    def get_member_name(self,obj):
+    def get_member_name(self, obj):
         return obj.member_id.nickname
+
+    def get_genres(self, obj):
+        return [genre.name for genre in obj.genre_id.all()]
+
+    def get_instruments(self, obj):
+        if obj.instrument_id.exists():
+            return [instrument.name for instrument in obj.instrument_id.all()]
+        return []
 
 class HistorySerializer(serializers.ModelSerializer):
     class Meta:

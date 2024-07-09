@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "music_videos",
     "member",
     "storages",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -167,3 +168,10 @@ AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
 OPENAI_API_KEY = env('OPENAI_API_KEY')
 SUNO_API_KEY = env('SUNO_API_KEY')
 
+# Celery 설정
+
+CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672//'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_TIMEZONE = 'Asia/Seoul'
+CELERY_ENABLE_UTC = False
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
