@@ -10,7 +10,6 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
-from .models import Genre, Instrument, MusicVideo, MusicVideoManager, History
 from .models import Genre, Instrument, MusicVideo, History
 from .serializers import MusicVideoSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
 
@@ -911,11 +910,9 @@ class HistoryUpdateView(APIView):
                 "status": 200,
                 "message": "시청 기록 갱신 성공"
             }
-            serializer = HistorySerializer(histories)
             logging.info(f'INFO {client_ip} {current_time} PATCH /history/{history_id} 200 success')
-            return Response(serializer.data, status=200)
-
             return Response(response_data, status=200)
+
         except History.DoesNotExist:
             response_data = {
                 "code": "M009_1",
