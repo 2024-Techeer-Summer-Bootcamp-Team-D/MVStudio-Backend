@@ -790,7 +790,7 @@ class HistoryCreateView(APIView):
             member = Member.objects.get(id=member_id)
             history_test = History.objects.filter(member_id=member, mv_id=mv_id)
             if history_test:
-                history_exist = history_test.first() # history_test는 쿼리셋(객체 여러개 가짐)이므로 그 안의 history 첫번째(특정 객체)를 가져와야함
+                history_exist = history_test.first() # history_test는 쿼리셋(객체 여러개 가짐)이므로 그 안의 history 첫번째(특정 객체)를 가져와서 처리
                 response_data = {
                     "history_id": history_exist.id,
                     "code": "M008_1",
@@ -835,16 +835,25 @@ class HistoryCreateView(APIView):
 
 class HistoryUpdateView(APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 업데이트 API",
-        operation_description="사용자의 뮤직비디오 시청 기록을 업데이트합니다.",
+        operation_summary="사용자의 뮤직비디오 시청 기록 갱신 API",
+        operation_description="사용자의 뮤직비디오 시청 기록을 갱신합니다.",
+        manual_parameters=[
+            openapi.Parameter(
+                'current_play_time',
+                openapi.IN_QUERY,
+                description='Current play time',
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+        ],
         responses={
             200: openapi.Response(
-                description="사용자의 뮤직비디오 시청 기록 업데이트 성공",
+                description="사용자의 뮤직비디오 시청 기록 갱신 성공",
                 examples={
                     "application/json": {
                         "code": "M009",
                         "status": 200,
-                        "message": "사용자 뮤직비디오 시청 기록 업데이트 성공",
+                        "message": "사용자 뮤직비디오 시청 기록 갱신 성공",
                     }
                 }
             ),
@@ -859,12 +868,12 @@ class HistoryUpdateView(APIView):
                 }
             ),
             500: openapi.Response(
-                description="서버 오류로 시청 기록을 업데이트할 수 없습니다.",
+                description="서버 오류로 시청 기록을 갱신할 수 없습니다.",
                 examples={
                     "application/json": {
                         "code": "M009_2",
                         "status": 500,
-                        "message": "서버 오류로 시청 기록을 업데이트할 수 없습니다."
+                        "message": "서버 오류로 시청 기록을 갱신할 수 없습니다."
                     }
                 }
             )
@@ -875,7 +884,7 @@ class HistoryUpdateView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             histories = History.objects.get(id=history_id)
-            current_play_time = request.data.get('current_play_time', histories.current_play_time)
+            current_play_time = request.query_params.get('current_play_time', histories.current_play_time)
             histories.current_play_time = current_play_time
             histories.updated_at = datetime.now()
             histories.save()
@@ -884,7 +893,7 @@ class HistoryUpdateView(APIView):
                 "history_id": histories.id,
                 "code": "M009",
                 "status": 200,
-                "message": "시청 기록 업데이트 성공"
+                "message": "시청 기록 갱신 성공"
             }
             serializer = HistorySerializer(histories)
             logging.info(f'INFO {client_ip} {current_time} PATCH /history/{history_id} 200 success')
@@ -902,9 +911,9 @@ class HistoryUpdateView(APIView):
             response_data = {
                 "code": "M009_2",
                 "status": 500,
-                "message": "서버 오류로 시청 기록을 업데이트할 수 없습니다.",
+                "message": "서버 오류로 시청 기록을 갱신할 수 없습니다.",
             }
             logging.error(
-                f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error - {str(e)}')
+                f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error')
             return Response(response_data, status=500)
 
