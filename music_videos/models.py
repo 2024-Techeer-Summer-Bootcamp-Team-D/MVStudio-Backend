@@ -2,22 +2,31 @@ from django.db import models
 from member.models import Member
 
 
+from django.db import models
+from member.models import Member
+
+
 class Genre(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
+
     def __str__(self):
         return self.name
+
+
 class Instrument(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
+
     def __str__(self):
         return self.name
+
 
 class MusicVideoManager(models.Manager):
     def get_queryset(self):
@@ -29,8 +38,8 @@ class MusicVideo(models.Model):
     member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
     subject = models.CharField(max_length=200)
     lyrics = models.CharField(max_length=2000)
-    genre_id = models.ManyToManyField(Genre)
-    instrument_id = models.ManyToManyField(Instrument, null=True)
+    genre_id = models.ManyToManyField(Genre, through='MusicVideoGenre')
+    instrument_id = models.ManyToManyField(Instrument, through='MusicVideoInstrument', blank=True)
     tempo = models.CharField(max_length=10)
     language = models.CharField(max_length=100)
     vocal = models.CharField(max_length=100)
@@ -43,23 +52,27 @@ class MusicVideo(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
 
-    objects = MusicVideoManager() # is_deleted = False 만 조회
+    objects = MusicVideoManager()  # is_deleted = False 만 조회
     all_objects = models.Manager()
+
     def __str__(self):
         return self.subject
 
-class Verse(models.Model):
-    id = models.AutoField(primary_key=True)
-    lyrics = models.CharField(max_length=500)
-    sequence = models.IntegerField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    mv_id = models.ForeignKey(MusicVideo, on_delete=models.CASCADE, db_column='mv_id')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_deleted = models.BooleanField(default=False)
-    def __str__(self):
-        return self.lyrics
+
+class MusicVideoGenre(models.Model):
+    music_video = models.ForeignKey(MusicVideo, on_delete=models.CASCADE)
+    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('music_video', 'genre')
+
+
+class MusicVideoInstrument(models.Model):
+    music_video = models.ForeignKey(MusicVideo, on_delete=models.CASCADE)
+    instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('music_video', 'instrument')
 
 class History(models.Model):
     id = models.AutoField(primary_key=True)

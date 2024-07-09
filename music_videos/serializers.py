@@ -1,7 +1,7 @@
 # mv_creator/serializers.py
 
 from rest_framework import serializers
-from .models import MusicVideo, Genre, Verse
+from .models import MusicVideo, Genre, History
 from django.db import IntegrityError
 
 from rest_framework import serializers
@@ -18,12 +18,6 @@ class InstrumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instrument
         fields = ['id', 'name']
-
-class VerseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Verse
-        fields = ['id', 'lyrics', 'start_time', 'end_time', 'sequence']
-
 
 class MusicVideoSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
@@ -94,3 +88,8 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
 
     def get_member_name(self,obj):
         return obj.member_id.nickname
+
+class HistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = History
+        fields = '__all__'
