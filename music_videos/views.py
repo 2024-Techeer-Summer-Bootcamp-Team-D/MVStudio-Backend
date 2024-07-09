@@ -10,8 +10,8 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
-from .models import Genre, Verse, Instrument, MusicVideo
-from .serializers import MusicVideoSerializer, VerseSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer
+from .models import Genre, Instrument, MusicVideo, MusicVideoManager, History
+from .serializers import MusicVideoSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
 
 from datetime import datetime
 import re
@@ -166,14 +166,16 @@ def suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject):
         "prompt": (
             lyrics
         ),
-        "tags": f"{genre_names_str},{instruments_str},{tempo},{vocal}",
+        "tags": f"{genre_names_str}, {instruments_str}, {tempo}, {vocal}",
         "custom_mode": True,
         "title": subject
     }
     response = requests.post(url, headers=headers, data=json.dumps(data))
-
     if response.status_code == 200:
         return response.json()
+    else:
+        print(f"Unhandled Exception: {response}")
+        print(response.text)
 
 def suno_music_get(task_id):
 
@@ -311,7 +313,7 @@ class MusicVideoView(APIView):
         genre_names_str = ", ".join(genre_names)
 
         instruments_ids = request.data['instruments_ids']
-        instruments = Genre.objects.filter(id__in=instruments_ids)
+        instruments = Instrument.objects.filter(id__in=instruments_ids)
         instruments_names = [str(instrument) for instrument in instruments]
         instruments_str = ", ".join(instruments_names)
 
@@ -379,17 +381,6 @@ class MusicVideoView(APIView):
         serializer = MusicVideoSerializer(data=data)
         if serializer.is_valid():
             music_video = serializer.save()
-            # for idx,verse in enumerate(verses):
-            #     verse_data = {
-            #         "lyrics" : "verse",
-            #         'start_time' : 'start_time',
-            #         'end_time' : 'end_time',
-            #         'sequence' : 'idx',
-            #         'mv_id' : serializer.validated_data['id']
-            #     }
-            #     verse_serializer = VerseSerializer(data = verse_data)
-            #     if verse_serializer.is_valid():
-            #         verse_serializer.save()
 
             response_data = {
                 "code": "M002",
@@ -741,4 +732,196 @@ class MusicVideoDetailView(APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
         return Response(serializer.data, status=200)
 
+
+class HistoryCreateView(APIView):
+    @swagger_auto_schema(
+        operation_summary="사용자의 뮤직비디오 시청 기록 생성 API",
+        operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 생성합니다.",
+        responses={
+            200: openapi.Response(
+                description="이미 시청한 기록이 있습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M008_1",
+                        "status": 200,
+                        "message": "이미 시청한 기록이 있습니다.",
+                    }
+                }
+            ),
+            201: openapi.Response(
+                description="사용자의 뮤직비디오 시청 기록 생성 완료",
+                examples={
+                    "application/json": {
+                        "code": "M008",
+                        "status": 201,
+                        "message": "사용자의 뮤직비디오 시청 기록 생성 완료",
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직 비디오를 찾을 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M008_2",
+                        "status": 404,
+                        "message": "뮤직 비디오를 찾을 수 없습니다."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="서버 오류로 시청 기록을 추가할 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M008_3",
+                        "status": 404,
+                        "message": "서버 오류로 시청 기록을 추가할 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request, member_id, mv_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M008_2",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다"
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} POST /history 404')
+            return Response(response_data, status=404)
+        try:
+            history_test = History.objects.get(member_id=member, mv_id=mv_id)
+            if history_test:
+                response_data = {
+                    "history_id": history_test.id,
+                    "code": "M008_1",
+                    "status": 200,
+                    "message": "이미 시청한 기록이 있습니다."
+                }
+                logging.warning(f'INFO {client_ip} {current_time} GET /history 200')
+                return Response(response_data, status=200)
+        except:
+            pass
+        try:
+            mv = MusicVideo.objects.get(id=mv_id)
+        except MusicVideo.DoesNotExist:
+            response_data = {
+                "code": "M008_3",
+                "status": 404,
+                "message": "뮤직 비디오를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} POST /history 404 Not Found')
+            return Response(response_data, status=404)
+        try:
+            histories = History.objects.create(
+                member_id=member,
+                mv_id=mv,
+                current_play_time=0,
+                is_deleted=False
+            )
+            response_data = {
+                "history_id": "history.id",
+                "code": "M008",
+                "status": 201,
+                "message": "시청 기록 추가 성공"
+            }
+            serializer = HistorySerializer(histories)
+            logging.info(f'INFO {client_ip} {current_time} GET /history 201 success')
+            return Response(serializer.data, status=201)
+        except Exception as e:
+            response_data = {
+                "code": "M008_4",
+                "status": 500,
+                "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} 500 failed')
+            return Response(response_data, status=500)
+
+class HistoryUpdateView(APIView):
+    @swagger_auto_schema(
+        operation_summary="사용자의 뮤직비디오 시청 기록 갱신 API",
+        operation_description="사용자의 뮤직비디오 시청 기록을 갱신합니다.",
+        manual_parameters=[
+            openapi.Parameter(
+                'current_play_time',
+                openapi.IN_QUERY,
+                description='Current play time',
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="사용자의 뮤직비디오 시청 기록 갱신 성공",
+                examples={
+                    "application/json": {
+                        "code": "M009",
+                        "status": 200,
+                        "message": "사용자 뮤직비디오 시청 기록 갱신 성공",
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="시청 기록을 찾을 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M009_1",
+                        "status": 404,
+                        "message": "시청 기록을 찾을 수 없습니다."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="서버 오류로 시청 기록을 갱신할 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M009_2",
+                        "status": 500,
+                        "message": "서버 오류로 시청 기록을 갱신할 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def patch(self, request, history_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            histories = History.objects.get(id=history_id)
+            current_play_time = request.query_params.get('current_play_time', histories.current_play_time)
+            histories.current_play_time = current_play_time
+            histories.updated_at = datetime.now()
+            histories.save()
+
+            response_data = {
+                "history_id": histories.id,
+                "code": "M009",
+                "status": 200,
+                "message": "시청 기록 갱신 성공"
+            }
+            serializer = HistorySerializer(histories)
+            logging.info(f'INFO {client_ip} {current_time} PATCH /history/{history_id} 200 success')
+            return Response(serializer.data, status=200)
+        except History.DoesNotExist:
+            response_data = {
+                "code": "M009_1",
+                "status": 404,
+                "message": "시청 기록을 찾을 수 없습니다."
+            }
+            logging.warning(
+                f'WARNING {client_ip} {current_time} PATCH /history/{history_id} 404 Not Found')
+            return Response(response_data, status=404)
+        except Exception as e:
+            response_data = {
+                "code": "M009_2",
+                "status": 500,
+                "message": "서버 오류로 시청 기록을 갱신할 수 없습니다.",
+            }
+            logging.error(
+                f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error')
+            return Response(response_data, status=500)
 
