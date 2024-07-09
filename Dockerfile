@@ -10,12 +10,6 @@ WORKDIR /MVStudio-Backend
 # 요구사항 파일을 복사합니다.
 COPY ./requirements.txt /requirements.txt
 
-# 패키지 목록을 업데이트하고 FFmpeg를 설치합니다.
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
 # Python 패키지를 설치합니다.
 RUN pip install --upgrade -r /requirements.txt
 
