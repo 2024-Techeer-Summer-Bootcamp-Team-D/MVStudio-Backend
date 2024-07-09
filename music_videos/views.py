@@ -793,6 +793,7 @@ class HistoryCreateView(APIView):
             }
             logging.warning(f'WARNING {client_ip} {current_time} POST /history 404')
             return Response(response_data, status=404)
+
         try:
             history_test = History.objects.get(member_id=member, mv_id=mv_id)
             if history_test:
@@ -806,6 +807,7 @@ class HistoryCreateView(APIView):
                 return Response(response_data, status=200)
         except:
             pass
+
         try:
             mv = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
@@ -816,6 +818,7 @@ class HistoryCreateView(APIView):
             }
             logging.warning(f'WARNING {client_ip} {current_time} POST /history 404 Not Found')
             return Response(response_data, status=404)
+
         try:
             histories = History.objects.create(
                 member_id=member,
@@ -832,6 +835,7 @@ class HistoryCreateView(APIView):
             serializer = HistorySerializer(histories)
             logging.info(f'INFO {client_ip} {current_time} GET /history 201 success')
             return Response(serializer.data, status=201)
+
         except Exception as e:
             response_data = {
                 "code": "M008_4",
@@ -845,15 +849,16 @@ class HistoryUpdateView(APIView):
     @swagger_auto_schema(
         operation_summary="사용자의 뮤직비디오 시청 기록 갱신 API",
         operation_description="사용자의 뮤직비디오 시청 기록을 갱신합니다.",
-        manual_parameters=[
-            openapi.Parameter(
-                'current_play_time',
-                openapi.IN_QUERY,
-                description='Current play time',
-                type=openapi.TYPE_INTEGER,
-                required=True
-            ),
-        ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'current_play_time': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description="Current play time"
+                )
+            },
+            required=['current_play_time']
+        ),
         responses={
             200: openapi.Response(
                 description="사용자의 뮤직비디오 시청 기록 갱신 성공",
@@ -892,11 +897,10 @@ class HistoryUpdateView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             histories = History.objects.get(id=history_id)
-            current_play_time = request.query_params.get('current_play_time', histories.current_play_time)
+            current_play_time = request.data.get('current_play_time', histories.current_play_time)
             histories.current_play_time = current_play_time
             histories.updated_at = datetime.now()
             histories.save()
-
             response_data = {
                 "history_id": histories.id,
                 "code": "M009",
@@ -906,6 +910,7 @@ class HistoryUpdateView(APIView):
             serializer = HistorySerializer(histories)
             logging.info(f'INFO {client_ip} {current_time} PATCH /history/{history_id} 200 success')
             return Response(serializer.data, status=200)
+
         except History.DoesNotExist:
             response_data = {
                 "code": "M009_1",
@@ -915,6 +920,7 @@ class HistoryUpdateView(APIView):
             logging.warning(
                 f'WARNING {client_ip} {current_time} PATCH /history/{history_id} 404 Not Found')
             return Response(response_data, status=404)
+
         except Exception as e:
             response_data = {
                 "code": "M009_2",
@@ -924,4 +930,5 @@ class HistoryUpdateView(APIView):
             logging.error(
                 f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error')
             return Response(response_data, status=500)
+
 
