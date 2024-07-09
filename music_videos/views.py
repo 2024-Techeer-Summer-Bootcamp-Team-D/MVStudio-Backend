@@ -503,7 +503,7 @@ class MusicVideoView(APIView):
 
 class MusicVideoDeleteView(APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 삭제 API",
+        operation_summary="뮤직비디오 삭제",
         operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
         responses={
             200: openapi.Response(
@@ -563,7 +563,7 @@ class MusicVideoDeleteView(APIView):
 
 class GenreListView(APIView):
     @swagger_auto_schema(
-        operation_summary="장르 리스트 조회 API",
+        operation_summary="장르 리스트 조회",
         operation_description="이 API는 사용자가 원하는 장르를 선택할 수 있도록 장르 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -619,7 +619,7 @@ class GenreListView(APIView):
 
 class InstrumentListView(APIView):
     @swagger_auto_schema(
-        operation_summary="악기 리스트 조회 API",
+        operation_summary="악기 리스트 조회",
         operation_description="이 API는 사용자가 원하는 악기를 선택할 수 있도록 악기 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -735,7 +735,7 @@ class MusicVideoDetailView(APIView):
 
 class HistoryCreateView(APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 생성 API",
+        operation_summary="사용자의 뮤직비디오 시청 기록 생성",
         operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 생성합니다.",
         responses={
             200: openapi.Response(
@@ -847,7 +847,7 @@ class HistoryCreateView(APIView):
 
 class HistoryUpdateView(APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 갱신 API",
+        operation_summary="사용자의 뮤직비디오 시청 기록 갱신",
         operation_description="사용자의 뮤직비디오 시청 기록을 갱신합니다.",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -930,5 +930,102 @@ class HistoryUpdateView(APIView):
             logging.error(
                 f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error')
             return Response(response_data, status=500)
+
+
+class HistoryDetailView(APIView):
+    @swagger_auto_schema(
+        operation_summary="사용자의 뮤직비디오 시청 기록 조회",
+        operation_description="사용자의 뮤직비디오 시청 기록을 조회합니다.",
+        manual_parameters=[
+            openapi.Parameter(
+                'page',
+                openapi.IN_QUERY,
+                description="페이지 번호 (기본값: 1)",
+                type=openapi.TYPE_INTEGER,
+                default=1
+            ),
+            openapi.Parameter(
+                'size',
+                openapi.IN_QUERY,
+                description="페이지당 아이템 수 (기본값: 10)",
+                type=openapi.TYPE_INTEGER,
+                default=10
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 시청 기록 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M010",
+                        "status": 200,
+                        "message": "뮤직비디오 시청 기록 조회 성공"
+                    }
+                }
+            ),404: openapi.Response(
+                description="요청하는 정보를 찾을 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M010_1",
+                        "status": 404,
+                        "message": "요청하는 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request, member_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M010_1",
+                "status": 404,
+                "message": "멤버를 찾을 수 없습니다."
+            }
+            logging.warning(
+                f'WARNING {client_ip} {current_time} /history/ 404 Not Found')
+            return Response(response_data, status=404)
+        try:
+            member_histories = History.objects.filter(member_id=member).order_by('-updated_at')
+        except History.DoesNotExist:
+            response_data = {
+                "code": "M010_2",
+                "status": 404,
+                "message": "시청 기록을 찾을 수 없습니다."
+            }
+            logging.warning(
+                f'WARNING {client_ip} {current_time} /history/ 404 Not Found')
+            return Response(response_data, status=404)
+
+        watch_mv_id = member_histories.values_list('mv_id', flat=True)
+        watch_music_videos = MusicVideo.objects.filter(id__in=watch_mv_id)
+
+        page = request.query_params.get('page', 1)
+        size = request.query_params.get('size', 10)
+        paginator = Paginator(watch_music_videos, size)
+        paginated_queryset = paginator.get_page(page)
+
+        serializer = MusicVideoDetailSerializer(paginated_queryset, many=True)
+
+        response_data = {
+            "music_videos": serializer.data,
+            "code": "M010",
+            "HTTPstatus": 200,
+            "message": "뮤직비디오 시청 기록 조회 성공",
+            "pagination": {
+                "current_page": paginated_queryset.number,
+                "next_page": paginated_queryset.has_next(),
+                "page_size": size,
+                "total_pages": paginator.num_pages,
+                "total_items": paginator.count,
+                "last_page": not paginated_queryset.has_next()
+            }
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /histories 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 
