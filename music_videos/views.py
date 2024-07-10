@@ -29,7 +29,8 @@ from django.db.models import Case, When
 from moviepy.editor import AudioFileClip, concatenate_videoclips
 from moviepy.video.VideoClip import ImageClip
 
-from botocore.exceptions import NoCredentialsError
+from elasticsearch_dsl.query import MultiMatch
+from .documents import MusicVideoDocument
 
 class CreateLyricsView(APIView):
     @swagger_auto_schema(
@@ -702,10 +703,6 @@ class MusicVideoDetailView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             music_video = MusicVideo.objects.get(id=music_video_id)
-            # recently_viewed 값 +1
-            music_video.recently_viewed += 1
-            # 변경 사항 저장
-            music_video.save()
         except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M003_1",
@@ -1020,6 +1017,72 @@ class HistoryDetailView(APIView):
             }
         }
         logging.info(f'INFO {client_ip} {current_time} GET /histories 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+
+class MusicVideoSearchView(APIView):
+    @swagger_auto_schema(
+        operation_description="Search music videos by name",
+        manual_parameters=[
+            openapi.Parameter('mv_name', openapi.IN_QUERY, description="Music video name", type=openapi.TYPE_STRING),
+            openapi.Parameter('sort', openapi.IN_QUERY, description="Sort by field", type=openapi.TYPE_STRING),
+            openapi.Parameter('page', openapi.IN_QUERY, description="Page number", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('size', openapi.IN_QUERY, description="Page size", type=openapi.TYPE_INTEGER),
+        ],
+        responses={200: MusicVideoDetailSerializer(many=True)}
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+        message = '뮤직비디오 정보 조회 성공'
+        mv_name = request.query_params.get('mv_name', None)
+        queryset = MusicVideo.objects.all()
+
+        if mv_name:
+            # Elasticsearch에서 유사한 이름의 뮤직비디오 검색
+            q = MultiMatch(query=mv_name, fields=['subject'], fuzziness='auto')
+            search = MusicVideoDocument.search().query(q)
+            response = search.execute()
+            music_video_ids = [hit.meta.id for hit in response]
+            queryset = queryset.filter(id__in=music_video_ids)
+        # 정렬
+        sort = request.query_params.get('sort', None)
+
+        if sort:
+            queryset = queryset.order_by(f'-{sort}')
+            message = f"뮤직비디오 {sort}순 정보 조회 성공"
+
+        # 결과가 없는 경우 처리
+        if not queryset.exists():
+            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 404 not found')
+            return Response({"error": "music videos not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # 페이지네이션
+        page = request.query_params.get('page',1)
+        size = request.query_params.get('size',10)
+        paginator = Paginator(queryset, size)
+        paginated_queryset = paginator.get_page(page)
+
+        serializer = MusicVideoDetailSerializer(paginated_queryset, many=True)
+
+        response_data = {
+            'music_videos': serializer.data,
+            "code": "M004",
+            "HTTPstatus": 200,
+            "message": message,
+            "pagination": {
+                "current_page": paginated_queryset.number,
+                "next_page": paginated_queryset.has_next(),
+                "page_size": size,
+                "total_pages": paginator.num_pages,
+                "total_items": paginator.count,
+                "last_page": not paginated_queryset.has_next()
+            }
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 

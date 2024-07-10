@@ -19,6 +19,10 @@ app.conf.beat_schedule = {
         'task': 'music_videos.tasks.hot_music_video_scheduled',
         'schedule': crontab(minute=0, hour=0),
     },
+    'rebuild_elasticsearch_index': {
+        'task': 'music_videos.tasks.rebuild_elasticsearch_index',
+        'schedule': crontab(hour=0, minute=0),  # 매일 자정에 실행
+    },
 }
 
 logger = logging.getLogger(__name__)
