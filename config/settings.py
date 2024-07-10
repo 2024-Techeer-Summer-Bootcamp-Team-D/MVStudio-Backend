@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     "member",
     "storages",
     "social_django",
-    "oauth"
+    "oauth",
     "django_celery_beat",
 ]
 

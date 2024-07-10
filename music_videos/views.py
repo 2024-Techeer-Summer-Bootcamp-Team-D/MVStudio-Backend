@@ -12,6 +12,7 @@ from django.core.paginator import Paginator
 from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History
 from .serializers import MusicVideoSerializer, GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
+from .s3_utils import upload_file_to_s3
 
 from datetime import datetime
 import re
@@ -24,6 +25,7 @@ import boto3
 import os
 import cv2
 import numpy as np
+from django.db.models import Case, When
 from moviepy.editor import AudioFileClip, concatenate_videoclips
 from moviepy.video.VideoClip import ImageClip
 
@@ -149,7 +151,7 @@ def Dall_e_image(verses, subject, vocal, genre_names_str):
             image_url.append(response.data[0].url)
         except Exception as e:
             if 'content_policy_violation' in str(e):
-                i = i - 1
+                i -= 1
                 pass
             else:
                 print(f"Unhandled Exception: {e}")
@@ -214,22 +216,6 @@ def mv_create(image_urls, output_size, audio_url, member_id):
         clip = ImageClip(img_rgb).set_duration(duration)
         return clip
 
-    # Function to upload a file to S3 and return the URL
-    def upload_to_s3(file_obj, member_id, timestamp):
-        s3 = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME,
-                          aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                          aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
-        s3_bucket = settings.AWS_STORAGE_BUCKET_NAME
-
-        s3_key = f"mv_videos/{member_id}_{timestamp}.mp4"
-        try:
-            s3.upload_file(file_obj, s3_bucket, s3_key)
-            url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}{s3_key}"
-            return url
-        except NoCredentialsError:
-            print("Credentials not available")
-            return None
-
     now = datetime.now()
     timestamp = now.strftime("%Y%m%d_%H%M%S")
 
@@ -269,15 +255,20 @@ def mv_create(image_urls, output_size, audio_url, member_id):
         final_video.write_videofile(video_filename, codec='libx264', fps=24)
 
         # 비디오를 S3에 업로드
-        video_url = upload_to_s3(video_filename, member_id, timestamp)
+        content_type = 'video/mp4'
+        s3_key = f"mv_videos/{member_id}_{timestamp}.mp4"
+
+        video_url = upload_file_to_s3(video_filename, s3_key, ExtraArgs={
+            "ContentType": content_type,
+        })
+
         os.remove(audio_filename)
         os.remove(video_filename)
         if video_url:
             return video_url
-        else:
-            print("비디오를 S3에 업로드하는 데 실패했습니다.")
     else:
         os.remove(audio_filename)
+        os.remove(video_filename)
         print("유효한 이미지가 없어 비디오를 생성할 수 없습니다.")
 
 
@@ -358,6 +349,7 @@ class MusicVideoView(APIView):
                 "status": 500,
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         # music video Create
         output_size = (1024, 1792)
 
@@ -1003,7 +995,8 @@ class HistoryDetailView(APIView):
             return Response(response_data, status=404)
 
         watch_mv_id = member_histories.values_list('mv_id', flat=True)
-        watch_music_videos = MusicVideo.objects.filter(id__in=watch_mv_id)
+        preserved_order = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(watch_mv_id)])
+        watch_music_videos = MusicVideo.objects.filter(id__in=watch_mv_id).order_by(preserved_order)
 
         page = request.query_params.get('page', 1)
         size = request.query_params.get('size', 10)

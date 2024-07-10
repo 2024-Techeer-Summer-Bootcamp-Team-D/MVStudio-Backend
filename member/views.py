@@ -10,12 +10,25 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Member, Country
 from .serializers import MemberSerializer, MemberDetailSerializer, MemberLoginSerializer, CountrySerializer
 
+
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from datetime import datetime
 import logging
 import os
+import sys
+
+# 현재 파일의 경로를 가져옵니다
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 상위 폴더의 경로를 구합니다
+parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+# 상위 폴더의 경로를 sys.path에 추가합니다
+sys.path.insert(0, parent_dir)
+
+from music_videos.s3_utils import upload_file_to_s3
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +243,16 @@ class MemberDetailView(APIView):
                     }
                 }
             ),
+            500: openapi.Response(
+                description="s3 이미지 업로드 실패",
+                examples={
+                    "application/json": {
+                        "code": "P002_3",
+                        "status": 500,
+                        "message": "s3 이미지 업로드 실패"
+                    }
+                }
+            ),
         }
     )
 
@@ -251,20 +274,22 @@ class MemberDetailView(APIView):
 
         if image_file:
             content_type = image_file.content_type
-            s3 = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME,
-                              aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                              aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
-            s3_bucket = settings.AWS_STORAGE_BUCKET_NAME
+
             # 파일 이름을 member_id로 구별
             file_extension = os.path.splitext(image_file.name)[1]  # 파일 확장자 추출
             s3_key = f"profiles/{member_id}{file_extension}"
-
-            s3.upload_fileobj(image_file, s3_bucket, s3_key, ExtraArgs={
-                'ContentType': content_type
+            image_url = upload_file_to_s3(image_file, s3_key, ExtraArgs={
+                "ContentType": content_type,
             })
 
-
-            image_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}{s3_key}"
+            if not image_url:
+                response_data = {
+                    "code": "P002_3",
+                    "status": 500,
+                    "message": "s3 이미지 업로드 실패."
+                }
+                logger.warning(f'WARNING {client_ip} {current_time} PATCH /members 500 does not existing')
+                return Response(response_data, status=500)
 
             data['profile_image'] = image_url
             serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
