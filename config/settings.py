@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "oauth",
     "django_celery_beat",
     "django_elasticsearch_dsl",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
@@ -67,6 +68,13 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "social_django.middleware.SocialAuthExceptionMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
+]
+
+# CORS 설정
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
 ]
 
 ROOT_URLCONF = "config.urls"
