@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "social_django",
     "oauth",
     "django_celery_beat",
+    "django_elasticsearch_dsl",
 ]
 
 MIDDLEWARE = [
@@ -121,6 +122,20 @@ DATABASES = {
     }
 }
 
+# Elasticsearch settings
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://elasticsearch:9200',
+        'http_auth': None,
+        'timeout': 30,
+        'use_ssl': False,
+        'verify_certs': False,
+        'ssl_show_warn': False,
+        'headers': {
+            'Content-Type': 'application/json'
+        }
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators

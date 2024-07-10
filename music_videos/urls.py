@@ -15,4 +15,5 @@ urlpatterns = [
     path('histories/<int:member_id>/<int:mv_id>/', views.HistoryCreateView.as_view(), name='create-history'),
     path('histories/<int:history_id>/', views.HistoryUpdateView.as_view(), name='update-history'),
     path('histories-list/<int:member_id>/', views.HistoryDetailView.as_view(), name='history-detail'),
+    path('searches/', views.MusicVideoSearchView.as_view(), name='music-video-search'),
 ]
