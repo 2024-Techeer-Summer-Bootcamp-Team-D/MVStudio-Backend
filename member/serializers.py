@@ -1,7 +1,8 @@
 # member/serializers.py
 
 from rest_framework import serializers
-from .models import Member
+from django.db import IntegrityError
+from .models import Member, Country
 from django.db import IntegrityError
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -47,3 +48,8 @@ class MemberLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("로그인 실패: 로그인 ID 또는 비밀번호가 잘못되었습니다.")
 
         return data
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = ['id', 'name']

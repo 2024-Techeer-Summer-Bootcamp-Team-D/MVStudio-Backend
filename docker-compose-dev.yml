@@ -1,22 +1,54 @@
 version: '3'
 
 services:
-#  db:
-#    image: mysql:8.0
-#    container_name: MVStudio-MySQL
-#    ports:
-#      - "3306:3306"
-#    volumes:
-#      - db_data:/var/lib/mysql
-#    environment:
-#      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-#      MYSQL_DATABASE: ${MYSQL_DATABASE}
-#      MYSQL_USER: ${MYSQL_USER}
-#      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-#
-#    networks:
-#      - mvs
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    networks:
+      - mvs
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - mvs
+
+  celery:
+    build: .
+    command: celery -A config worker --loglevel=info
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - mvs
+
+  celery-beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - mvs
+
+  flower:
+    image: mher/flower
+    command: celery flower -A config --port=5555 --broker=$CELERY_BROKER_URL
+    ports:
+      - "5555:5555"
+    depends_on:
+      - rabbitmq
+      - celery
+    environment:
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/
+    networks:
+      - mvs
   backend:
     container_name: MVStudio-Backend
     build:
@@ -26,18 +58,14 @@ services:
       - ../MVStudio-Backend:/MVStudio-Backend
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_NAME: ${DATABASE_NAME}
-      DATABASE_USER: ${MYSQL_USER}
-      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
-#    depends_on:
-#      - db
-#    networks:
-#      - mvs
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - mvs
     restart: always
     command: >
-      sh -c "sleep 5 &&
+      sh -c "sleep 5 && %
             python manage.py makemigrations &&
             python manage.py makemigrations member &&
             python manage.py makemigrations music_videos &&
@@ -45,9 +73,7 @@ services:
             python manage.py runserver 0.0.0.0:8000"
 
 volumes:
-  db_data:
   static_volume:
 
-#networks:
-#  mvs:
-#    driver: bridge
+networks:
+  mvs:

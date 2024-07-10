@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "storages",
     "social_django",
     "oauth"
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -168,6 +169,8 @@ AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME')
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
+OPENAI_API_KEY = env('OPENAI_API_KEY')
+SUNO_API_KEY = env('SUNO_API_KEY')
 
 # Open API Documentation
 OPENAI_API_KEY = env('OPENAI_API_KEY')
@@ -184,4 +187,10 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
+# Celery 설정
 
+CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672//'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_TIMEZONE = 'Asia/Seoul'
+CELERY_ENABLE_UTC = False
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

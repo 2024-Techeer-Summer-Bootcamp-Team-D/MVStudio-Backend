@@ -1,7 +1,7 @@
 # mv_creator/serializers.py
 
 from rest_framework import serializers
-from .models import MusicVideo, Genre, Verse
+from .models import MusicVideo, Genre, History
 from django.db import IntegrityError
 
 from rest_framework import serializers
@@ -19,35 +19,35 @@ class InstrumentSerializer(serializers.ModelSerializer):
         model = Instrument
         fields = ['id', 'name']
 
-class VerseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Verse
-        fields = ['id', 'lyrics', 'start_time', 'end_time', 'sequence']
-
-
 class MusicVideoSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
-    genre_ids = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all(), many=True, write_only=True,
-                                                   source='genres')
+    genres_ids = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all(), many=True, write_only=True)
 
     instruments = InstrumentSerializer(many=True, read_only=True)
-    instrument_ids = serializers.PrimaryKeyRelatedField(queryset=Instrument.objects.all(), many=True, write_only=True,
-                                                        source='instruments')
+    instruments_ids = serializers.PrimaryKeyRelatedField(queryset=Instrument.objects.all(), many=True, write_only=True)
 
     class Meta:
         model = MusicVideo
         fields = [
             'id', 'member_id', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
-            'genres', 'genre_ids', 'instruments', 'instrument_ids', 'tempo'
+            'genres', 'genres_ids', 'instruments', 'instruments_ids', 'tempo', 'lyrics'
         ]
 
     def create(self, validated_data):
         genres = validated_data.pop('genres_ids')
         instruments = validated_data.pop('instruments_ids')
-        music_video = MusicVideo.objects.create(**validated_data)
-        music_video.genres.set(genres)
-        music_video.instruments.set(instruments)
+        try:
+            music_video = MusicVideo.objects.create(**validated_data)
+            music_video.genre_id.set(genres)
+            music_video.instrument_id.set(instruments)
+        except Exception as e:
+            print(str(e))
+            return {
+                "code": "M005_1",
+                "status": 500,
+                "message": f"서버 오류: {str(e)}"
+            }
         return music_video
 
     def update(self, instance, validated_data):
@@ -70,3 +70,36 @@ class MusicVideoSerializer(serializers.ModelSerializer):
             instance.instruments.set(instruments)
 
         return instance
+
+class MusicVideoDeleteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MusicVideo
+        fields = [
+            'id', 'member_id', 'subject', 'is_deleted'
+        ]
+
+class MusicVideoDetailSerializer(serializers.ModelSerializer):
+    member_name = serializers.SerializerMethodField()
+    genres = serializers.SerializerMethodField()
+    instruments = serializers.SerializerMethodField()
+    class Meta:
+        model = MusicVideo
+        fields = [
+            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'language', 'vocal', 'tempo'
+        ]
+
+    def get_member_name(self, obj):
+        return obj.member_id.nickname
+
+    def get_genres(self, obj):
+        return [genre.name for genre in obj.genre_id.all()]
+
+    def get_instruments(self, obj):
+        if obj.instrument_id.exists():
+            return [instrument.name for instrument in obj.instrument_id.all()]
+        return []
+
+class HistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = History
+        fields = '__all__'

@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 
-from .models import Member
-from .serializers import MemberSerializer, MemberDetailSerializer, MemberLoginSerializer
+from .models import Member, Country
+from .serializers import MemberSerializer, MemberDetailSerializer, MemberLoginSerializer, CountrySerializer
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -30,7 +30,7 @@ class MemberSignUpView(APIView):
                 description="회원가입 완료",
                 examples={
                     "application/json": {
-                        "code": "M001",
+                        "code": "A001",
                         "status": 201,
                         "message": "회원가입 완료"
                     }
@@ -40,7 +40,7 @@ class MemberSignUpView(APIView):
                 description="회원가입 실패",
                 examples={
                     "application/json": {
-                        "code": "M002",
+                        "code": "A001_1",
                         "status": 400,
                         "message": "이미 존재하는 로그인 ID입니다."
                     }
@@ -64,7 +64,7 @@ class MemberSignUpView(APIView):
                 return Response(response_data, status=201)
             except serializers.ValidationError as e:
                 response_data = {
-                    "code": "A002",
+                    "code": "A001_1",
                     "status": 400,
                     "message": "이미 존재하는 로그인 ID입니다."
                 }
@@ -104,7 +104,7 @@ class MemberDetailView(APIView):
                 description="회원 정보가 없습니다.",
                 examples={
                     "application/json": {
-                        "code": "P002",
+                        "code": "P001_1",
                         "status": 404,
                         "message": "회원 정보가 없습니다."
                     }
@@ -120,7 +120,7 @@ class MemberDetailView(APIView):
             member = Member.objects.get(id=member_id)
         except Member.DoesNotExist:
             response_data = {
-                "code": "P002",
+                "code": "P001_1",
                 "status": 404,
                 "message": "회원 정보가 없습니다."
             }
@@ -204,7 +204,7 @@ class MemberDetailView(APIView):
                 description="회원 정보 수정 완료",
                 examples={
                     "application/json": {
-                        "code": "P003",
+                        "code": "P002",
                         "status": 200,
                         "message": "회원 정보 수정 완료"
                     }
@@ -214,7 +214,7 @@ class MemberDetailView(APIView):
                 description="회원 정보가 없습니다.",
                 examples={
                     "application/json": {
-                        "code": "P002",
+                        "code": "P002_2",
                         "status": 404,
                         "message": "회원 정보가 없습니다."
                     }
@@ -224,7 +224,7 @@ class MemberDetailView(APIView):
                 description="유효하지 않은 데이터입니다.",
                 examples={
                     "application/json": {
-                        "code": "P004",
+                        "code": "P002_1",
                         "status": 400,
                         "message": "유효하지 않은 데이터입니다."
                     }
@@ -240,7 +240,7 @@ class MemberDetailView(APIView):
             member = Member.objects.get(id=member_id)
         except Member.DoesNotExist:
             response_data = {
-                "code": "P002",
+                "code": "P002_2",
                 "status": 404,
                 "message": "회원 정보가 없습니다."
             }
@@ -275,7 +275,7 @@ class MemberDetailView(APIView):
         if serializer.is_valid():
             serializer.save()
             response_data = {
-                "code": "P003",
+                "code": "P002",
                 "status": 200,
                 "message": "회원 정보 수정 완료"
             }
@@ -318,7 +318,7 @@ class MemberLoginView(APIView):
         serializer = MemberLoginSerializer(data=request.data)
         if serializer.is_valid():
             response_data = {
-                "code": "A001",
+                "code": "A002",
                 "status": 200,
                 "message": "로그인 성공"
             }
@@ -331,3 +331,60 @@ class MemberLoginView(APIView):
         }
         logger.warning(f'WARNING {client_ip} {current_time} POST /members/login 400 login failed')
         return Response(response_data, status=400)
+
+
+class CountryListView(APIView):
+    @swagger_auto_schema(
+        operation_summary="국가 리스트 조회 API",
+        operation_description="이 API는 사용자의 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",
+        responses={
+            200: openapi.Response(
+                description="국가 리스트 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "P003",
+                        "status": 200,
+                        "message": "국가 리스트 조회 성공",
+                        "data": {
+                            "name": "string",
+                            "code": "P003",
+                            "HTTPstatus": 200,
+                            "message": "국가 리스트 조회 성공"
+                        }
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="국가 리스트를 불러올 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "P003_1",
+                        "status": 500,
+                        "message": "국가 리스트를 불러올 수 없습니다."
+                    }
+                }
+            ),
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            countries = Country.objects.all()
+            serializer = CountrySerializer(countries, many=True)
+            response_data = {
+                "code": "P003",
+                "status": 200,
+                "message": "국가 리스트 조회 성공",
+                "data": serializer.data
+            }
+            logger.info(f'INFO {client_ip} {current_time} GET /country_list 200 success')
+            return Response(response_data, status=200)
+        except Exception as e:
+            response_data = {
+                "code": "P003_1",
+                "status": 500,
+                "message": "국가 리스트를 불러올 수 없습니다."
+            }
+            logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 500 failed')
+            return Response(response_data, status=500)
