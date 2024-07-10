@@ -9,7 +9,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import Member, Country
 from .serializers import MemberSerializer, MemberDetailSerializer, MemberLoginSerializer, CountrySerializer
-from .s3_utils import upload_file_to_s3
+
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -17,6 +17,18 @@ from drf_yasg import openapi
 from datetime import datetime
 import logging
 import os
+import sys
+
+# 현재 파일의 경로를 가져옵니다
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 상위 폴더의 경로를 구합니다
+parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+# 상위 폴더의 경로를 sys.path에 추가합니다
+sys.path.insert(0, parent_dir)
+
+from music_videos.s3_utils import upload_file_to_s3
 
 logger = logging.getLogger(__name__)
 
