@@ -18,6 +18,7 @@ from moviepy.video.VideoClip import ImageClip
 import openai
 import logging
 import os
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 @app.task
@@ -205,6 +206,18 @@ def create_music_video(client_ip, current_time, subject, vocal, tempo, member_id
         get_key = list(result['data']['clips'].keys())[1]
         audio_url = result['data']['clips'][get_key]['audio_url']
         cover_image_url = result['data']['clips'][get_key]['image_url']
+        img = requests.get(cover_image_url)
+        img.raise_for_status()
+        img_file = BytesIO(img.content)
+
+        now = datetime.now()
+        timestamp = now.strftime("%Y%m%d_%H%M%S")
+
+        s3_key = f"cover_images/{member_id}_{timestamp}.jpg"
+        img_url = upload_file_to_s3(img_file, s3_key, ExtraArgs={
+                "ContentType": img.headers.get('Content-Type', ''),
+            })
+
         duration = result['data']['clips'][get_key]['metadata']['duration']
     except Exception as e:
         logging.error(f'ERROR {client_ip} {current_time} POST /music_videos 500 {str(e)}')
@@ -222,7 +235,7 @@ def create_music_video(client_ip, current_time, subject, vocal, tempo, member_id
         "language": language,
         "vocal": vocal,
         "length": duration,
-        "cover_image": cover_image_url,
+        "cover_image": img_url,
         "mv_file": video_url,
         "lyrics": lyrics,
         "genres_ids": genres_ids,
