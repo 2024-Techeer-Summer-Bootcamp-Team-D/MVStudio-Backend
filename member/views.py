@@ -339,10 +339,12 @@ class MemberLoginView(APIView):
         operation_description="이 API는 사용자 로그인을 처리하는 데 사용됩니다.",
         request_body=MemberLoginSerializer,
         responses={
-            200: openapi.Response(
+            201: openapi.Response(
                 description="로그인 성공",
                 examples={
                     "application/json": {
+                        "id": 0,
+                        "username": "string",
                         "code": "A002",
                         "status": 201,
                         "message": "로그인 성공"
@@ -366,13 +368,16 @@ class MemberLoginView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         serializer = MemberLoginSerializer(data=request.data)
         if serializer.is_valid():
+            member = Member.objects.get(login_id=serializer.validated_data['login_id'])
             response_data = {
+                "id": member.id,
+                "username": member.nickname,
                 "code": "A002",
-                "status": 200,
+                "status": 201,
                 "message": "로그인 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} POST /members/login 200 login success')
-            return Response(response_data, status=200)
+            logger.info(f'INFO {client_ip} {current_time} POST /members/login 201 login success')
+            return Response(response_data, status=201)
         response_data = {
             "code": "A002_1",
             "status": 400,
