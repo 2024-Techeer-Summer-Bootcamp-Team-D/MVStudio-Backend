@@ -43,18 +43,20 @@ class MemberSignUpView(APIView):
                 description="회원가입 완료",
                 examples={
                     "application/json": {
+                        "id" : 0,
+                        "username": "string",
                         "code": "A001",
                         "status": 201,
                         "message": "회원가입 완료"
                     }
                 }
             ),
-            400: openapi.Response(
+            200: openapi.Response(
                 description="회원가입 실패",
                 examples={
                     "application/json": {
                         "code": "A001_1",
-                        "status": 400,
+                        "status": 200,
                         "message": "이미 존재하는 로그인 ID입니다."
                     }
                 }
@@ -64,25 +66,47 @@ class MemberSignUpView(APIView):
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        login_id = request.data.get('login_id')
+        country_id = request.data.get('country')
+        if not Country.objects.filter(id=country_id).exists():
+            response_data = {
+                "code": "A001_2",
+                "status": 400,
+                "message": "유효하지 않은 country ID입니다."
+            }
+            logger.warning(f'WARNING {client_ip} {current_time} POST /members 400 invalid country id')
+            return Response(response_data, status=400)
+        
+        # 중복된 login_id 확인
+        if Member.objects.filter(login_id=login_id).exists():
+            existing_member = Member.objects.get(login_id=login_id)
+            response_data = {
+                "code": "A001_1",
+                "status": 200,
+                "message": "이미 존재하는 로그인 ID입니다.",
+            }
+            logger.warning(f'WARNING {client_ip} {current_time} POST /members 200 already existing')
+            return Response(response_data, status=200)
+
+
         serializer = MemberSerializer(data=request.data)
         if serializer.is_valid():
-            try:
-                serializer.save()
-                response_data = {
-                    "code": "A001",
-                    "status": 201,
-                    "message": "회원가입 완료"
-                }
-                logger.info(f'INFO {client_ip} {current_time} POST /members 201 signup success')
-                return Response(response_data, status=201)
-            except serializers.ValidationError as e:
-                response_data = {
-                    "code": "A001_1",
-                    "status": 400,
-                    "message": "이미 존재하는 로그인 ID입니다."
-                }
-                logger.warning(f'WARNING {client_ip} {current_time} POST /members 400 already existing')
-                return Response(response_data, status=400)
+            member = serializer.save()
+            response_data = {
+                "id": member.id,
+                "username": member.nickname,
+                "code": "A001",
+                "status": 201,
+                "message": "회원가입 완료"
+            }
+            logger.info(f'INFO {client_ip} {current_time} POST /members 201 signup success')
+            return Response(response_data, status=201)
+        response_data = {
+            "code": "A001_3",
+            "status": 400,
+            "message": "유효하지 않은 데이터입니다."
+        }
         logger.warning(f'WARNING {client_ip} {current_time} POST /members 400 signup failed')
         return Response(serializer.errors, status=400)
 

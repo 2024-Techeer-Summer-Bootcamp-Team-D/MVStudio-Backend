@@ -25,7 +25,8 @@ class MemberSerializer(serializers.ModelSerializer):
             )
             return member
         except IntegrityError as e:
-            raise serializers.ValidationError({"login_id": "This login_id is already in use."})
+            existing_member = Member.objects.get(login_id=validated_data['login_id'])
+            return existing_member
 
 class MemberDetailSerializer(serializers.ModelSerializer):
     class Meta:
