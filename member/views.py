@@ -51,12 +51,29 @@ class MemberSignUpView(APIView):
                     }
                 }
             ),
-            200: openapi.Response(
+            400: openapi.Response(
+                description="잘못된 요청",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "A001_1",
+                            "status": 400,
+                            "message": "유효하지 않은 country ID입니다."
+                        },
+                        {
+                            "code": "A001_2",
+                            "status": 400,
+                            "message": "유효하지 않은 데이터입니다."
+                        }
+                    ]
+                }
+            ),
+            409: openapi.Response(
                 description="회원가입 실패",
                 examples={
                     "application/json": {
-                        "code": "A001_1",
-                        "status": 200,
+                        "code": "A001_3",
+                        "status": 409,
                         "message": "이미 존재하는 로그인 ID입니다."
                     }
                 }
@@ -71,7 +88,7 @@ class MemberSignUpView(APIView):
         country_id = request.data.get('country')
         if not Country.objects.filter(id=country_id).exists():
             response_data = {
-                "code": "A001_2",
+                "code": "A001_1",
                 "status": 400,
                 "message": "유효하지 않은 country ID입니다."
             }
@@ -82,11 +99,11 @@ class MemberSignUpView(APIView):
         if Member.objects.filter(login_id=login_id).exists():
             existing_member = Member.objects.get(login_id=login_id)
             response_data = {
-                "code": "A001_1",
-                "status": 200,
+                "code": "A001_3",
+                "status": 409,
                 "message": "이미 존재하는 로그인 ID입니다.",
             }
-            logger.warning(f'WARNING {client_ip} {current_time} POST /members 200 already existing')
+            logger.warning(f'WARNING {client_ip} {current_time} POST /members 409 already existing')
             return Response(response_data, status=200)
 
 
@@ -103,7 +120,7 @@ class MemberSignUpView(APIView):
             logger.info(f'INFO {client_ip} {current_time} POST /members 201 signup success')
             return Response(response_data, status=201)
         response_data = {
-            "code": "A001_3",
+            "code": "A001_2",
             "status": 400,
             "message": "유효하지 않은 데이터입니다."
         }
@@ -127,9 +144,13 @@ class MemberDetailView(APIView):
                         "data": {
                             "login_id": "string",
                             "nickname": "string",
-                            "age": "integer",
                             "sex": "string",
+                            "comment": "string",
                             "country": "string",
+                            "birthday": "string",
+                            "profile_image": "string",
+                            "youtube_account": "string",
+                            "instagram_account": "string",
                             "code": "P001",
                             "HTTPstatus": 200,
                             "message": "회원 정보 조회 성공"
@@ -138,7 +159,7 @@ class MemberDetailView(APIView):
                 }
             ),
             404: openapi.Response(
-                description="회원 정보가 없습니다.",
+                description="회원 정보 조회 실패",
                 examples={
                     "application/json": {
                         "code": "P001_1",
@@ -170,7 +191,7 @@ class MemberDetailView(APIView):
             "status": 200,
             "message": "회원 정보 조회 성공"
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /members 200 signup success')
+        logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
         return Response(serializer.data, status=200)
 
     @swagger_auto_schema(
@@ -178,13 +199,6 @@ class MemberDetailView(APIView):
         operation_description="이 API는 특정 회원의 정보를 수정하는 데 사용됩니다.",
 
     manual_parameters=[
-            openapi.Parameter(
-                'login_id',
-                openapi.IN_FORM,
-                description="Login ID",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
             openapi.Parameter(
                 'nickname',
                 openapi.IN_FORM,
@@ -197,6 +211,13 @@ class MemberDetailView(APIView):
                 openapi.IN_FORM,
                 description="Profile image file",
                 type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'sex',
+                openapi.IN_FORM,
+                description="Sex",
+                type=openapi.TYPE_STRING,
                 required=False
             ),
             openapi.Parameter(
@@ -238,12 +259,12 @@ class MemberDetailView(APIView):
         ],
         responses={
             200: openapi.Response(
-                description="회원 정보 수정 완료",
+                description="회원 정보 수정 성공",
                 examples={
                     "application/json": {
                         "code": "P002",
                         "status": 200,
-                        "message": "회원 정보 수정 완료"
+                        "message": "회원 정보 수정 성공"
                     }
                 }
             ),
@@ -293,8 +314,9 @@ class MemberDetailView(APIView):
             }
             logger.warning(f'WARNING {client_ip} {current_time} PATCH /members 404 does not existing')
             return Response(response_data, status=404)
+
         data = request.data.copy()
-        image_file = data['profile_image']
+        image_file = data.get('profile_image', None)
 
         if image_file:
             content_type = image_file.content_type
@@ -316,10 +338,9 @@ class MemberDetailView(APIView):
                 return Response(response_data, status=500)
 
             data['profile_image'] = image_url
-            serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
-
         else:
-            serializer = MemberDetailSerializer(instance=member, data=request.data, partial=True)
+            data['profile_image'] = member.profile_image
+        serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
 
         if serializer.is_valid():
             serializer.save()
@@ -409,12 +430,12 @@ class CountryListView(APIView):
                 }
             ),
             500: openapi.Response(
-                description="국가 리스트를 불러올 수 없습니다.",
+                description="국가 리스트 조회 실패",
                 examples={
                     "application/json": {
                         "code": "P003_1",
                         "status": 500,
-                        "message": "국가 리스트를 불러올 수 없습니다."
+                        "message": "국가 리스트 조회 실패"
                     }
                 }
             ),
@@ -438,7 +459,7 @@ class CountryListView(APIView):
             response_data = {
                 "code": "P003_1",
                 "status": 500,
-                "message": "국가 리스트를 불러올 수 없습니다."
+                "message": "국가 리스트 조회 실패"
             }
             logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 500 failed')
             return Response(response_data, status=500)
