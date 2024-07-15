@@ -432,8 +432,17 @@ class MusicVideoDevelopView(APIView):
             member_id = request.data.get('member_id')
             subject = request.data.get('subject')
             lyrics = request.data.get('lyrics')
-            genres_ids = request.data.get('genres_ids')
-            instruments_ids = request.data.get('instruments_ids')
+
+            genres_ids = request.data['genres_ids']
+            genres = Genre.objects.filter(id__in=genres_ids)
+            genre_names = [str(genre) for genre in genres]
+            genre_names_str = ", ".join(genre_names)
+
+            instruments_ids = request.data['instruments_ids']
+            instruments = Instrument.objects.filter(id__in=instruments_ids)
+            instruments_names = [str(instrument) for instrument in instruments]
+            instruments_str = ", ".join(instruments_names)
+
             tempo = request.data.get('tempo')
             language = request.data.get('language')
             vocal = request.data.get('vocal')
@@ -454,8 +463,8 @@ class MusicVideoDevelopView(APIView):
             member = Member.objects.get(id=member_id)
 
             # 장르와 악기 정보 가져오기
-            genres = Genre.objects.filter(id__in=genres_ids)
-            instruments = Instrument.objects.filter(id__in=instruments_ids)
+            genres_ids = Genre.objects.filter(id__in=genres_ids)
+            instruments_ids = Instrument.objects.filter(id__in=instruments_ids)
 
             # MusicVideo 객체 생성
             music_video = MusicVideo(
