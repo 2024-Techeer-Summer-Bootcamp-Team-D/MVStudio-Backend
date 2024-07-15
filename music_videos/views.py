@@ -11,9 +11,13 @@ from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History, Style
 from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
 from .tasks import create_music_video
+from .models import Genre, Instrument, MusicVideo, History
+from .serializers import GenreSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
+from .tasks import create_music_video, suno_music, create_video, mv_create
+from celery import group, chord
+from celery.result import AsyncResult
 
 from datetime import datetime
-import re
 import logging
 import openai
 from django.db.models import Case, When
@@ -189,6 +193,11 @@ class MusicVideoView(APIView):
             instruments_names = [str(instrument) for instrument in instruments]
             instruments_str = ", ".join(instruments_names)
 
+            # style_id = request.data['style_id']
+            # style = Genre.objects.get(id=style_id)
+            # style_name = str(style)
+            style_name = 'Anime'
+
             # lyrics 값을 가져옴
             lyrics = request.data['lyrics']
 
@@ -201,17 +210,28 @@ class MusicVideoView(APIView):
                 logging.error(f'ERROR {client_ip} {current_time} POST /music_video 400 missing required fields')
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
-            # 벌스별로 나누기 위해 정규 표현식 사용, 그리고 [Verse], [Bridge] 태그 제거
-            verses = re.split(r'\[.*?\]\n', lyrics)
-            # 빈 문자열 제거
-            verses = [verse.strip() for verse in verses if verse.strip()]
+            # 텍스트를 줄 단위로 나누기
+            lines = lyrics.strip().split('\n')
+            # [Verse]와 같은 태그를 제외하고 저장
+            filtered_lines = [line for line in lines if not line.startswith('[') and line.strip()]
 
-            task_id = create_music_video.delay(client_ip, current_time, subject, vocal, tempo, member_id, language, genre_names_str, instruments_str, verses, lyrics, genres_ids, instruments_ids).id
+            music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
+            print("music_task 성공", music_task)
+            video_tasks = group(
+                create_video.s(line, style_name) for line in filtered_lines
+            )
+            print("video_tasks 성공", video_tasks)
+            music_video_task = chord(
+                header=[music_task] + video_tasks.tasks,
+                body=mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids,
+                                 tempo, member_id)
+            )
+            task_id = music_video_task.apply_async().id
 
             response_data = {
                 "code": "M002",
                 "status": 200,
-                "message": "뮤직비디오 생성 성공",
+                "message": "뮤직비디오 생성 요청 성공",
                 "task_id": task_id
             }
             logging.info(f'INFO {client_ip} {current_time} PATCH /music_video 200 post success')
@@ -433,8 +453,17 @@ class MusicVideoDevelopView(APIView):
             member_id = request.data.get('member_id')
             subject = request.data.get('subject')
             lyrics = request.data.get('lyrics')
-            genres_ids = request.data.get('genres_ids')
-            instruments_ids = request.data.get('instruments_ids')
+
+            genres_ids = request.data['genres_ids']
+            genres = Genre.objects.filter(id__in=genres_ids)
+            genre_names = [str(genre) for genre in genres]
+            genre_names_str = ", ".join(genre_names)
+
+            instruments_ids = request.data['instruments_ids']
+            instruments = Instrument.objects.filter(id__in=instruments_ids)
+            instruments_names = [str(instrument) for instrument in instruments]
+            instruments_str = ", ".join(instruments_names)
+
             tempo = request.data.get('tempo')
             language = request.data.get('language')
             vocal = request.data.get('vocal')
@@ -455,12 +484,12 @@ class MusicVideoDevelopView(APIView):
             member = Member.objects.get(id=member_id)
 
             # 장르와 악기 정보 가져오기
-            genres = Genre.objects.filter(id__in=genres_ids)
-            instruments = Instrument.objects.filter(id__in=instruments_ids)
+            genres_ids = Genre.objects.filter(id__in=genres_ids)
+            instruments_ids = Instrument.objects.filter(id__in=instruments_ids)
 
             # MusicVideo 객체 생성
             music_video = MusicVideo(
-                member=member,
+                member_id=member,
                 subject=subject,
                 lyrics=lyrics,
                 tempo=tempo,
@@ -1283,4 +1312,24 @@ class MusicVideoSearchView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
+class MusicVideoStatusView(APIView):
+    def get(self, request, task_id):
+        task = AsyncResult(task_id)
 
+        if task.state == 'PENDING':
+            response = {
+                'state': task.state,
+                'status': 'Pending...'
+            }
+        elif task.state != 'FAILURE':
+            response = {
+                'state': task.state,
+                'result': task.result
+            }
+        else:
+            response = {
+                'state': task.state,
+                'status': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
+            }
+
+        return Response(response)
