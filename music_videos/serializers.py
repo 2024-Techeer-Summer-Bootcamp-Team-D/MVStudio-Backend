@@ -1,6 +1,6 @@
 # mv_creator/serializers.py
 
-from .models import History
+from .models import History, Style
 
 from rest_framework import serializers
 from .models import MusicVideo, Genre, Instrument
@@ -15,6 +15,11 @@ class GenreSerializer(serializers.ModelSerializer):
 class InstrumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instrument
+        fields = ['id', 'name', 'image_url']
+
+class StyleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Style
         fields = ['id', 'name', 'image_url']
 
 

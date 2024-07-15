@@ -8,8 +8,8 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
-from .models import Genre, Instrument, MusicVideo, History
-from .serializers import GenreSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
+from .models import Genre, Instrument, MusicVideo, History, Style
+from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
 from .tasks import create_music_video
 
 from datetime import datetime
@@ -701,7 +701,7 @@ class InstrumentListView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             instruments = Instrument.objects.all()
-            serializer = GenreSerializer(instruments, many=True)
+            serializer = InstrumentSerializer(instruments, many=True)
             response_data = {
                 "instruments": [
                     {
@@ -723,6 +723,84 @@ class InstrumentListView(APIView):
                 "message": "악기 리스트를 불러올 수 없습니다."
             }
             logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed : {e}')
+            return Response(response_data, status=500)
+
+class StyleListView(APIView):
+    @swagger_auto_schema(
+        operation_summary="스타일 리스트 조회",
+        operation_description="이 API는 사용자가 원하는 영상 스타일을 선택할 수 있도록 스타일 리스트를 제공하는 기능을 합니다.",
+        responses={
+            200: openapi.Response(
+                description="스타일 리스트 조회 성공",
+                examples={
+                    "application/json": {
+                        "styles": [
+                            {
+                                "style_id": 0,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                            {
+                                "style_id": 1,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                            {
+                                "style_id": 2,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                            {
+                                "style_id": 3,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                        ],
+                        "code": "M011",
+                        "status": 200,
+                        "message": "스타일 리스트 조회 성공",
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="스타일 리스트를 불러올 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M011_1",
+                        "status": 500,
+                        "message": "스타일 리스트를 불러올 수 없습니다."
+                    }
+                }
+            ),
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            styles = Style.objects.all()
+            serializer = StyleSerializer(styles, many=True)
+            response_data = {
+                "data": [
+                    {
+                        "style_id": item["id"],
+                        "style_name": item["name"],
+                        "style_image_url": item["image_url"]
+                    } for item in serializer.data
+                ],
+                "code": "M011",
+                "status": 200,
+                "message": "스타일 리스트 조회 성공"
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /genre_list 200 success')
+            return Response(response_data, status=200)
+        except Exception as e:
+            response_data = {
+                "code": "M011_1",
+                "status": 500,
+                "message": "스타일 리스트를 불러올 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
 
@@ -1188,7 +1266,7 @@ class MusicVideoSearchView(APIView):
 
         response_data = {
             "music_videos": serializer.data,
-            "code": "M004",
+            "code": "S001",
             "HTTPstatus": 200,
             "message": message,
             "pagination": {
