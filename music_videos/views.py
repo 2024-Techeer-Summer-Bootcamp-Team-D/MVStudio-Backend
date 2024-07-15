@@ -459,7 +459,7 @@ class MusicVideoDevelopView(APIView):
 
             # MusicVideo 객체 생성
             music_video = MusicVideo(
-                member=member,
+                member_id=member,
                 subject=subject,
                 lyrics=lyrics,
                 tempo=tempo,
