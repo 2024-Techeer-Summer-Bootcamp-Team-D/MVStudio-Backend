@@ -119,13 +119,14 @@ class MemberSignUpView(APIView):
             }
             logger.info(f'INFO {client_ip} {current_time} POST /members 201 signup success')
             return Response(response_data, status=201)
-        response_data = {
-            "code": "A001_2",
-            "status": 400,
-            "message": "유효하지 않은 데이터입니다."
-        }
+        else:
+            response_data = {
+                "code": "A001_2",
+                "status": 400,
+                "message": "유효하지 않은 데이터입니다."
+            }
         logger.warning(f'WARNING {client_ip} {current_time} POST /members 400 signup failed')
-        return Response(serializer.errors, status=400)
+        return Response(response_data, status=400)
 
 
 class MemberDetailView(APIView):
