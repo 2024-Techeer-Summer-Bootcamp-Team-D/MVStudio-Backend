@@ -370,6 +370,151 @@ class MusicVideoView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
+class MusicVideoDevelopView(APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 생성 API",
+        operation_description="이 API는 뮤직비디오를 생성하는 데 사용됩니다.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'member_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
+                'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
+                'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
+                'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
+                'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포'),
+                'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
+                'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬'),
+                'cover_image': openapi.Schema(type=openapi.TYPE_STRING, description='커버 이미지 URL'),
+                'mv_file': openapi.Schema(type=openapi.TYPE_STRING, description='뮤직비디오 파일 URL')
+            },
+            required=['member_id', 'subject', 'lyrics', 'genres_ids', 'instruments_ids', 'tempo', 'language', 'vocal', 'cover_image', 'mv_file']
+        ),
+        responses={
+            201: openapi.Response(
+                description="뮤직비디오 생성 성공",
+                examples={
+                    "application/json": {
+                        "code": "M002",
+                        "status": 201,
+                        "message": "뮤직비디오 생성 성공"
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="필수 파라미터 누락",
+                examples={
+                    "application/json": {
+                        "code": "M002_1",
+                        "status": 400,
+                        "message": "필수 조건이 누락되었습니다."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="서버 오류",
+                examples={
+                    "application/json": {
+                        "code": "M002_2",
+                        "status": 500,
+                        "message": "서버 오류"
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            # 요청 데이터 가져오기
+            member_id = request.data.get('member_id')
+            subject = request.data.get('subject')
+            lyrics = request.data.get('lyrics')
+            genres_ids = request.data.get('genres_ids')
+            instruments_ids = request.data.get('instruments_ids')
+            tempo = request.data.get('tempo')
+            language = request.data.get('language')
+            vocal = request.data.get('vocal')
+            cover_image = request.data.get('cover_image')
+            mv_file = request.data.get('mv_file')
+
+            # 필수 필드 확인
+            if not (member_id and subject and lyrics and genres_ids and instruments_ids and tempo and language and vocal and cover_image and mv_file):
+                response_data = {
+                    "code": "M002_1",
+                    "status": 400,
+                    "message": "필수 조건이 누락되었습니다."
+                }
+                logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 missing required fields')
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+            # 회원 정보 가져오기
+            member = Member.objects.get(id=member_id)
+
+            # 장르와 악기 정보 가져오기
+            genres = Genre.objects.filter(id__in=genres_ids)
+            instruments = Instrument.objects.filter(id__in=instruments_ids)
+
+            # MusicVideo 객체 생성
+            music_video = MusicVideo(
+                member=member,
+                subject=subject,
+                lyrics=lyrics,
+                tempo=tempo,
+                language=language,
+                vocal=vocal,
+                cover_image=cover_image,
+                mv_file=mv_file,
+                length=85.0,
+                recently_viewed=0,
+                views=0
+            )
+            music_video.save()
+
+            # ManyToMany 필드 추가
+            music_video.genres.set(genres)
+            music_video.instruments.set(instruments)
+
+            response_data = {
+                "code": "M002",
+                "status": 201,
+                "message": "뮤직비디오 생성 성공"
+            }
+            logging.info(f'INFO {client_ip} {current_time} POST /music_video_develop 201 success')
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except Member.DoesNotExist:
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 Member with ID {member_id} does not exist')
+            return Response({
+                "code": "M002_1",
+                "status": 400,
+                "message": f"잘못된 회원 ID: {member_id}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Genre.DoesNotExist as e:
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 Genre does not exist: {str(e)}')
+            return Response({
+                "code": "M002_1",
+                "status": 400,
+                "message": f"잘못된 장르 ID: {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Instrument.DoesNotExist as e:
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 Instrument does not exist: {str(e)}')
+            return Response({
+                "code": "M002_1",
+                "status": 400,
+                "message": f"잘못된 악기 ID: {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 500 {str(e)}')
+            return Response({
+                "code": "M002_2",
+                "status": 500,
+                "message": f"서버 오류: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class MusicVideoDeleteView(APIView):
     @swagger_auto_schema(
         operation_summary="뮤직비디오 삭제",
