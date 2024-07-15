@@ -1,5 +1,3 @@
-from urllib import request
-
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -9,7 +7,6 @@ from drf_yasg import openapi
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import F
 from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History
 from .serializers import GenreSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
@@ -23,6 +20,7 @@ from django.db.models import Case, When
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
+
 
 class CreateLyricsView(APIView):
     @swagger_auto_schema(
@@ -61,7 +59,6 @@ class CreateLyricsView(APIView):
             ),
         }
     )
-
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -226,7 +223,6 @@ class MusicVideoView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
     @swagger_auto_schema(
         operation_summary="뮤직비디오 목록 조회",
         operation_description="모든 뮤직비디오 목록을 조회합니다. 정렬 및 페이지네이션 기능을 지원합니다.",
@@ -326,7 +322,6 @@ class MusicVideoView(APIView):
         # 정렬
         sort = request.query_params.get('sort', None)
 
-
         if member_id:
             queryset = queryset.filter(member_id=member_id)
             message = f'사용자 뮤직비디오 정보 조회 성공'
@@ -407,7 +402,6 @@ class MusicVideoDeleteView(APIView):
             ),
         }
     )
-
     def delete(self, request, music_video_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -443,14 +437,27 @@ class GenreListView(APIView):
                 description="장르 리스트 조회 성공",
                 examples={
                     "application/json": {
+                        "genres": [
+                            {
+                                "genre_id": 0,
+                                "genre_name": "string",
+                            },
+                            {
+                                "genre_id": 1,
+                                "genre_name": "string",
+                            },
+                            {
+                                "genre_id": 2,
+                                "genre_name": "string",
+                            },
+                            {
+                                "genre_id": 3,
+                                "genre_name": "string",
+                            },
+                        ],
                         "code": "M005",
                         "status": 200,
                         "message": "장르 리스트 조회 성공",
-                        "data": {
-                            "name": "string",
-                            "code": "M005",
-                            "HTTPstatus": 200,
-                        }
                     }
                 }
             ),
@@ -473,10 +480,16 @@ class GenreListView(APIView):
             genres = Genre.objects.all()
             serializer = GenreSerializer(genres, many=True)
             response_data = {
+                "data": [
+                    {
+                        "genre_id": item["id"],
+                        "genre_name": item["name"],
+                        "genre_image_url": item["image_url"]
+                    } for item in serializer.data
+                ],
                 "code": "M005",
                 "status": 200,
-                "message": "장르 리스트 조회 성공",
-                "data": serializer.data
+                "message": "장르 리스트 조회 성공"
             }
             logging.info(f'INFO {client_ip} {current_time} GET /genre_list 200 success')
             return Response(response_data, status=200)
@@ -486,8 +499,9 @@ class GenreListView(APIView):
                 "status": 500,
                 "message": "장르 리스트를 불러올 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed')
+            logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
+
 
 class InstrumentListView(APIView):
     @swagger_auto_schema(
@@ -498,14 +512,30 @@ class InstrumentListView(APIView):
                 description="악기 리스트 조회 성공",
                 examples={
                     "application/json": {
+                        "instruments": [{
+                                "instrument_id": 0,
+                                "instrument_name": "string",
+                                "instrument_image_url": "string",
+                            },
+                            {
+                                "instrument_id": 1,
+                                "instrument_name": "string",
+                                "instrument_image_url": "string",
+                            },
+                            {
+                                "instrument_id": 2,
+                                "instrument_name": "string",
+                                "instrument_image_url": "string",
+                            },
+                            {
+                                "instrument_id": 3,
+                                "instrument_name": "string",
+                                "instrument_image_url": "string",
+                            }
+                        ],
                         "code": "M006",
                         "status": 200,
                         "message": "악기 리스트 조회 성공",
-                        "data": {
-                            "name": "string",
-                            "code": "M006",
-                            "HTTPstatus": 200,
-                        }
                     }
                 }
             ),
@@ -521,7 +551,6 @@ class InstrumentListView(APIView):
             ),
         }
     )
-
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -529,10 +558,16 @@ class InstrumentListView(APIView):
             instruments = Instrument.objects.all()
             serializer = GenreSerializer(instruments, many=True)
             response_data = {
+                "instruments": [
+                    {
+                        "instrument_id": item["id"],
+                        "instrument_name": item["name"],
+                        "instrument_image_url": item["image_url"]
+                    } for item in serializer.data
+                ],
                 "code": "M006",
                 "status": 200,
-                "message": "악기 리스트 조회 성공",
-                "data": serializer.data
+                "message": "악기 리스트 조회 성공"
             }
             logging.info(f'INFO {client_ip} {current_time} GET /instrument_list 200 success')
             return Response(response_data, status=200)
@@ -542,8 +577,9 @@ class InstrumentListView(APIView):
                 "status": 500,
                 "message": "악기 리스트를 불러올 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed')
+            logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed : {e}')
             return Response(response_data, status=500)
+
 
 class MusicVideoDetailView(APIView):
 
@@ -719,6 +755,7 @@ class HistoryCreateView(APIView):
 
             }
             return Response(response_data, status=500)
+
 
 class HistoryUpdateView(APIView):
     @swagger_auto_schema(
@@ -901,7 +938,6 @@ class HistoryDetailView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
-
 class MusicVideoSearchView(APIView):
     @swagger_auto_schema(
         operation_summary="뮤직비디오 검색",
@@ -969,8 +1005,6 @@ class MusicVideoSearchView(APIView):
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
         message = '뮤직비디오 정보 조회 성공'
         mv_name = request.query_params.get('mv_name', None)
         queryset = MusicVideo.objects.all()
