@@ -1,10 +1,12 @@
 from django.shortcuts import redirect
-from django.urls import reverse
 from rest_framework.views import APIView
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from django.conf import settings
+from drf_yasg.utils import swagger_auto_schema
 
+
+@swagger_auto_schema(auto_schema=None)
 class AuthYoutubeView(APIView):
     def get(self, request):
         # OAuth 2.0 플로우 설정
@@ -32,6 +34,7 @@ class AuthYoutubeView(APIView):
         return redirect(authorization_url)
 
 
+@swagger_auto_schema(auto_schema=None)
 class AuthYoutubeCallbackView(APIView):
     def get(self, request):
         state = request.session['state']
