@@ -2,27 +2,25 @@ from django.db import models
 from member.models import Member
 
 
-class AbstractBaseModel(models.Model):
+class Genre(models.Model):
     id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
-
-    class Meta:
-        abstract = True
-
-
-class Genre(AbstractBaseModel):
-    name = models.CharField(max_length=100, unique=True)
-    image_url = models.CharField(max_length=1000)
+    image_url = models.CharField(max_length=1000, null=True, blank=True)
 
     def __str__(self):
         return self.name
 
 
-class Instrument(AbstractBaseModel):
+class Instrument(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)
-    image_url = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
+    image_url = models.CharField(max_length=1000, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -42,8 +40,9 @@ class MusicVideoManager(models.Manager):
         return super().get_queryset().filter(is_deleted=False)
 
 
-class MusicVideo(AbstractBaseModel):
-    member = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
+class MusicVideo(models.Model):
+    id = models.AutoField(primary_key=True)
+    member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
     subject = models.CharField(max_length=200)
     lyrics = models.CharField(max_length=2000)
     genre_id = models.ManyToManyField(Genre, through='MusicVideoGenre')
@@ -57,8 +56,11 @@ class MusicVideo(AbstractBaseModel):
     mv_file = models.CharField(max_length=1000)
     recently_viewed = models.IntegerField(default=0)
     views = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
 
-    objects = MusicVideoManager()
+    objects = MusicVideoManager()  # is_deleted = False 만 조회
     all_objects = models.Manager()
 
     def __str__(self):
@@ -80,8 +82,11 @@ class MusicVideoInstrument(models.Model):
     class Meta:
         unique_together = ('music_video', 'instrument')
 
-
-class History(AbstractBaseModel):
-    mv = models.ForeignKey(MusicVideo, on_delete=models.CASCADE, db_column='mv_id')
-    member = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
+class History(models.Model):
+    id = models.AutoField(primary_key=True)
+    mv_id = models.ForeignKey(MusicVideo, on_delete=models.CASCADE, db_column='mv_id')
+    member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
     current_play_time = models.IntegerField(default=0)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

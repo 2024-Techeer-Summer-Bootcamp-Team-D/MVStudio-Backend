@@ -30,19 +30,23 @@ class MusicVideoSerializer(serializers.ModelSerializer):
     instruments = InstrumentSerializer(many=True, read_only=True)
     instruments_ids = serializers.PrimaryKeyRelatedField(queryset=Instrument.objects.all(), many=True, write_only=True)
 
+    style = StyleSerializer(read_only=True)
+    style_id = serializers.PrimaryKeyRelatedField(queryset=Style.objects.all(), write_only=True)
+
     class Meta:
         model = MusicVideo
         fields = [
             'id', 'member_id', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
-            'genres', 'genres_ids', 'instruments', 'instruments_ids', 'tempo', 'lyrics'
+            'genres', 'genres_ids', 'instruments', 'instruments_ids', 'style', 'style_id', 'tempo', 'lyrics'
         ]
 
     def create(self, validated_data):
         genres = validated_data.pop('genres_ids')
         instruments = validated_data.pop('instruments_ids')
+        style = validated_data.pop('style_id')
         try:
-            music_video = MusicVideo.objects.create(**validated_data)
+            music_video = MusicVideo.objects.create(**validated_data, style=style)
             music_video.genre_id.set(genres)
             music_video.instrument_id.set(instruments)
         except Exception as e:
@@ -57,6 +61,7 @@ class MusicVideoSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         genres = validated_data.pop('genres', None)
         instruments = validated_data.pop('instruments', None)
+        style = validated_data.get('style_id', instance.style_id)
 
         instance.subject = validated_data.get('subject', instance.subject)
         instance.language = validated_data.get('language', instance.language)
@@ -66,6 +71,7 @@ class MusicVideoSerializer(serializers.ModelSerializer):
         instance.mv_file = validated_data.get('mv_file', instance.mv_file)
         instance.views = validated_data.get('views', instance.views)
         instance.is_deleted = validated_data.get('is_deleted', instance.is_deleted)
+        instance.style_id = style.id
         instance.save()
 
         if genres is not None:
@@ -88,10 +94,11 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
     member_name = serializers.SerializerMethodField()
     genres = serializers.SerializerMethodField()
     instruments = serializers.SerializerMethodField()
+    style = StyleSerializer()
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'language', 'vocal', 'tempo'
+            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'style', 'language', 'vocal', 'tempo'
         ]
 
     def get_member_name(self, obj):

@@ -137,6 +137,7 @@ class MusicVideoView(APIView):
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
+                'style_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영상 스타일 ID'),
                 'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포 유형'),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
                 'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬 유형'),
