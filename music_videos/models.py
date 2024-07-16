@@ -25,6 +25,15 @@ class Instrument(models.Model):
     def __str__(self):
         return self.name
 
+class Style(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100, unique=True)
+    image_url = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
+    def __str__(self):
+        return self.name
 
 class MusicVideoManager(models.Manager):
     def get_queryset(self):
@@ -38,6 +47,7 @@ class MusicVideo(models.Model):
     lyrics = models.CharField(max_length=2000)
     genre_id = models.ManyToManyField(Genre, through='MusicVideoGenre')
     instrument_id = models.ManyToManyField(Instrument, through='MusicVideoInstrument', blank=True)
+    style_id = models.ForeignKey(Style, on_delete=models.SET_NULL, db_column='style_id', null=True, blank=True)
     tempo = models.CharField(max_length=10)
     language = models.CharField(max_length=100)
     vocal = models.CharField(max_length=100)

@@ -8,12 +8,11 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from member.models import Member
-from .models import Genre, Instrument, MusicVideo, History
-from .serializers import GenreSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer
+from .models import Genre, Instrument, MusicVideo, History, Style
+from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
 from .tasks import create_music_video, suno_music, create_video, mv_create
 from celery import group, chord
 from celery.result import AsyncResult
-
 
 from datetime import datetime
 import logging
@@ -139,12 +138,13 @@ class MusicVideoView(APIView):
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
+                'style_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영상 스타일 ID'),
                 'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포 유형'),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
                 'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬 유형'),
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사')
             },
-            required=['member_id', 'subject', 'genres_ids', 'instruments_ids', 'tempo', 'language', 'vocal', 'lyrics']
+            required=['member_id', 'subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics']
         ),
         responses={
             201: openapi.Response(
@@ -190,15 +190,14 @@ class MusicVideoView(APIView):
             instruments_names = [str(instrument) for instrument in instruments]
             instruments_str = ", ".join(instruments_names)
 
-            # style_id = request.data['style_id']
-            # style = Genre.objects.get(id=style_id)
-            # style_name = str(style)
-            style_name = 'Anime'
+            style_id = request.data['style_id']
+            style = Style.objects.get(id=style_id)
+            style_name = str(style)
 
             # lyrics 값을 가져옴
             lyrics = request.data['lyrics']
 
-            if not subject or not vocal or not tempo or not language or not genres_ids or not instruments_ids or not lyrics:
+            if not subject or not vocal or not tempo or not language or not genres_ids or not instruments_ids or not lyrics or not style_id:
                 response_data = {
                     "code": "M002_1",
                     "status": 400,
@@ -291,11 +290,12 @@ class MusicVideoView(APIView):
                             "string",
                             "string",
                             ],
-                            "instrument": [
+                            "instruments": [
                             "string",
                             "string",
                             "string",
                             ],
+                            "style_name": "string",
                             "language": "string",
                             "vocal": "string",
                             "tempo": "string",
@@ -400,13 +400,14 @@ class MusicVideoDevelopView(APIView):
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
+                'style_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영상 스타일 ID'),
                 'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포'),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
                 'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬'),
                 'cover_image': openapi.Schema(type=openapi.TYPE_STRING, description='커버 이미지 URL'),
                 'mv_file': openapi.Schema(type=openapi.TYPE_STRING, description='뮤직비디오 파일 URL')
             },
-            required=['member_id', 'subject', 'lyrics', 'genres_ids', 'instruments_ids', 'tempo', 'language', 'vocal', 'cover_image', 'mv_file']
+            required=['member_id', 'subject', 'lyrics', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'cover_image', 'mv_file']
         ),
         responses={
             201: openapi.Response(
@@ -461,6 +462,8 @@ class MusicVideoDevelopView(APIView):
             instruments_names = [str(instrument) for instrument in instruments]
             instruments_str = ", ".join(instruments_names)
 
+            style_id = request.data.get('style_id')
+
             tempo = request.data.get('tempo')
             language = request.data.get('language')
             vocal = request.data.get('vocal')
@@ -468,7 +471,7 @@ class MusicVideoDevelopView(APIView):
             mv_file = request.data.get('mv_file')
 
             # 필수 필드 확인
-            if not (member_id and subject and lyrics and genres_ids and instruments_ids and tempo and language and vocal and cover_image and mv_file):
+            if not (member_id and subject and lyrics and genres_ids and instruments_ids and style_id and tempo and language and vocal and cover_image and mv_file):
                 response_data = {
                     "code": "M002_1",
                     "status": 400,
@@ -480,9 +483,12 @@ class MusicVideoDevelopView(APIView):
             # 회원 정보 가져오기
             member = Member.objects.get(id=member_id)
 
+            # 영상 스타일 정보 가져오기
+            style = Style.objects.get(id=style_id)
+
             # 장르와 악기 정보 가져오기
-            genres_ids = Genre.objects.filter(id__in=genres_ids)
-            instruments_ids = Instrument.objects.filter(id__in=instruments_ids)
+            genres = Genre.objects.filter(id__in=genres_ids)
+            instruments = Instrument.objects.filter(id__in=instruments_ids)
 
             # MusicVideo 객체 생성
             music_video = MusicVideo(
@@ -491,6 +497,7 @@ class MusicVideoDevelopView(APIView):
                 lyrics=lyrics,
                 tempo=tempo,
                 language=language,
+                style_id=style,
                 vocal=vocal,
                 cover_image=cover_image,
                 mv_file=mv_file,
@@ -501,8 +508,8 @@ class MusicVideoDevelopView(APIView):
             music_video.save()
 
             # ManyToMany 필드 추가
-            music_video.genres.set(genres)
-            music_video.instruments.set(instruments)
+            music_video.genre_id.set(genres)
+            music_video.instrument_id.set(instruments)
 
             response_data = {
                 "code": "M002",
@@ -728,7 +735,7 @@ class InstrumentListView(APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             instruments = Instrument.objects.all()
-            serializer = GenreSerializer(instruments, many=True)
+            serializer = InstrumentSerializer(instruments, many=True)
             response_data = {
                 "instruments": [
                     {
@@ -750,6 +757,84 @@ class InstrumentListView(APIView):
                 "message": "악기 리스트를 불러올 수 없습니다."
             }
             logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed : {e}')
+            return Response(response_data, status=500)
+
+class StyleListView(APIView):
+    @swagger_auto_schema(
+        operation_summary="영상 스타일 리스트 조회",
+        operation_description="이 API는 사용자가 원하는 영상 스타일을 선택할 수 있도록 영상 스타일 리스트를 제공하는 기능을 합니다.",
+        responses={
+            200: openapi.Response(
+                description="영상 스타일 리스트 조회 성공",
+                examples={
+                    "application/json": {
+                        "styles": [
+                            {
+                                "style_id": 0,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                            {
+                                "style_id": 1,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                            {
+                                "style_id": 2,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                            {
+                                "style_id": 3,
+                                "style_name": "string",
+                                "style_image_url": "string",
+                            },
+                        ],
+                        "code": "M011",
+                        "status": 200,
+                        "message": "영상 스타일 리스트 조회 성공",
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="영상 스타일 리스트를 불러올 수 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "M011_1",
+                        "status": 500,
+                        "message": "영상 스타일 리스트를 불러올 수 없습니다."
+                    }
+                }
+            ),
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            styles = Style.objects.all()
+            serializer = StyleSerializer(styles, many=True)
+            response_data = {
+                "data": [
+                    {
+                        "style_id": item["id"],
+                        "style_name": item["name"],
+                        "style_image_url": item["image_url"]
+                    } for item in serializer.data
+                ],
+                "code": "M011",
+                "status": 200,
+                "message": "스타일 리스트 조회 성공"
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /genre_list 200 success')
+            return Response(response_data, status=200)
+        except Exception as e:
+            response_data = {
+                "code": "M011_1",
+                "status": 500,
+                "message": "스타일 리스트를 불러올 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
 
@@ -1137,11 +1222,12 @@ class MusicVideoSearchView(APIView):
                                 "string",
                                 "string",
                             ],
-                            "instrument": [
+                            "instruments": [
                                 "string",
                                 "string",
                                 "string",
                             ],
+                            "style_name": "string",
                             "language": "string",
                             "vocal": "string",
                             "tempo": "string",
@@ -1215,7 +1301,7 @@ class MusicVideoSearchView(APIView):
 
         response_data = {
             "music_videos": serializer.data,
-            "code": "M004",
+            "code": "S001",
             "HTTPstatus": 200,
             "message": message,
             "pagination": {
