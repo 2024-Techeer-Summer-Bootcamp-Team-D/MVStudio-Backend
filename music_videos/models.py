@@ -47,7 +47,7 @@ class MusicVideo(models.Model):
     lyrics = models.CharField(max_length=2000)
     genre_id = models.ManyToManyField(Genre, through='MusicVideoGenre')
     instrument_id = models.ManyToManyField(Instrument, through='MusicVideoInstrument', blank=True)
-    style_id = models.ForeignKey(Style, on_delete=models.SET_NULL, db_column='style_id', null=True)
+    style_id = models.ForeignKey(Style, on_delete=models.SET_NULL, db_column='style_id', null=True, blank=True)
     tempo = models.CharField(max_length=10)
     language = models.CharField(max_length=100)
     vocal = models.CharField(max_length=100)

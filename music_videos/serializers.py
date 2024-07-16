@@ -94,16 +94,17 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
     member_name = serializers.SerializerMethodField()
     genres = serializers.SerializerMethodField()
     instruments = serializers.SerializerMethodField()
-    style = StyleSerializer()
+    style_name = serializers.SerializerMethodField()
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'style', 'language', 'vocal', 'tempo'
+            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
         ]
 
     def get_member_name(self, obj):
         return obj.member_id.nickname
-
+    def get_style_name(self, obj):
+        return obj.style_id.name
     def get_genres(self, obj):
         return [genre.name for genre in obj.genre_id.all()]
 

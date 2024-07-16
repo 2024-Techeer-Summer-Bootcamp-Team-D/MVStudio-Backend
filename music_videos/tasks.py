@@ -244,7 +244,7 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
 
 
 @app.task
-def create_music_video(client_ip, current_time, subject, vocal, tempo, member_id, language, genre_names_str, instruments_str, filtered_lines, lyrics, genres_ids, instruments_ids,style):
+def create_music_video(client_ip, current_time, subject, vocal, tempo, member_id, language, genre_names_str, instruments_str, filtered_lines, lyrics, genres_ids, instruments_ids, style):
 
     music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
     print("music_task 성공", music_task)
