@@ -136,7 +136,8 @@ def create_video(line, style):
 
     payload = {
         "text_prompt": f"masterpiece, {style}, {line}",
-        "width": 1344,
+        "model": "gen3",
+        "width": 1280,
         "height": 768,
         "motion": 5,
         "seed": 0,
@@ -184,8 +185,8 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
     duration = results[0][1]
     urls = results[1:]
     one_clip_size = (duration / 8)
-    clip_count = int(one_clip_size // 4)
-    last_clip_size = one_clip_size % 4
+    clip_count = int(one_clip_size // 5)
+    last_clip_size = one_clip_size % 5
 
     clips = []
     for url in urls:

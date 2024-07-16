@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History, Style
 from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
-from .tasks import create_music_video, suno_music, create_video, mv_create
+from .tasks import suno_music, create_video, mv_create
 from celery import group, chord
 from celery.result import AsyncResult
 
