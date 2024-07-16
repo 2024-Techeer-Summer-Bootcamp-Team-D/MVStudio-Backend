@@ -179,25 +179,28 @@ class MusicVideoView(APIView):
             tempo = request.data['tempo']
             member_id = request.data['member_id']
             language = request.data['language']
+            lyrics = request.data['lyrics']
+            lyrics_eng = request.data['lyrics_eng']
+
             # 장르 쉼표로 구분
             genres_ids = request.data['genres_ids']
             genres = Genre.objects.filter(id__in=genres_ids)
             genre_names = [str(genre) for genre in genres]
             genre_names_str = ", ".join(genre_names)
 
+            # 악기 쉼표로 구분
             instruments_ids = request.data['instruments_ids']
             instruments = Instrument.objects.filter(id__in=instruments_ids)
             instruments_names = [str(instrument) for instrument in instruments]
             instruments_str = ", ".join(instruments_names)
 
+            # 스타일 쉼표로 구분
             style_id = request.data['style_id']
             style = Style.objects.get(id=style_id)
             style_name = str(style)
 
-            # lyrics 값을 가져옴
-            lyrics = request.data['lyrics']
-
-            if not subject or not vocal or not tempo or not language or not genres_ids or not instruments_ids or not lyrics or not style_id:
+            # 필수 조건 예외 처리
+            if not subject or not vocal or not tempo or not language or not genres_ids  or not lyrics or not style_id or not lyrics_eng:
                 response_data = {
                     "code": "M002_1",
                     "status": 400,
@@ -207,16 +210,16 @@ class MusicVideoView(APIView):
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 텍스트를 줄 단위로 나누기
-            lines = lyrics.strip().split('\n')
+            lines = lyrics_eng.strip().split('\n')
             # [Verse]와 같은 태그를 제외하고 저장
             filtered_lines = [line for line in lines if not line.startswith('[') and line.strip()]
 
             music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
-            print("music_task 성공", music_task)
+
             video_tasks = group(
                 create_video.s(line, style_name) for line in filtered_lines
             )
-            print("video_tasks 성공", video_tasks)
+
             music_video_task = chord(
                 header=[music_task] + video_tasks.tasks,
                 body=mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids,
@@ -1318,23 +1321,105 @@ class MusicVideoSearchView(APIView):
 
 
 class MusicVideoStatusView(APIView):
+    @swagger_auto_schema(
+        operation_description="뮤직비디오 제작 작업의 상태를 확인합니다",
+        manual_parameters=[
+            openapi.Parameter(
+                'task_id',
+                openapi.IN_PATH,
+                description="뮤직비디오 제작 작업의 ID",
+                type=openapi.TYPE_STRING
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="작업이 진행 중이거나 커스텀 상태입니다",
+                examples={
+                    "application/json": {
+                        "code": "M012_1",
+                        "task_status": "PENDING",
+                        "HTTPstatus": 200,
+                        "message": "뮤직비디오 제작 진행중입니다..."
+                    }
+                }
+            ),
+            201: openapi.Response(
+                description="작업이 성공적으로 완료되었습니다",
+                examples={
+                    "application/json": {
+                        "code": "M012",
+                        "task_status": "SUCCESS",
+                        "HTTPstatus": 201,
+                        "message": "뮤직비디오 제작 성공하였습니다."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="작업이 실패하였습니다",
+                examples={
+                    "application/json": {
+                        "code": "M012_2",
+                        "task_status": "FAILURE",
+                        "HTTPstatus": 500,
+                        "message": "뮤직비디오 제작 실패하였습니다."
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="작업을 찾을 수 없습니다",
+                examples={
+                    "application/json": {
+                        "code": "M012_4",
+                        "task_id": "task_id",
+                        "HTTPstatus": 404,
+                        "message": "task가 존재하지 않습니다."
+                    }
+                }
+            )
+        }
+    )
     def get(self, request, task_id):
-        task = AsyncResult(task_id)
+        try:
+            task = AsyncResult(task_id)
 
-        if task.state == 'PENDING':
-            response = {
-                'state': task.state,
-                'status': 'Pending...'
+            if task.state == 'PENDING':
+                response_data = {
+                    "code": "M012_1",
+                    "task_status": "PENDING",
+                    "HTTPstatus": 200,
+                    "message": "뮤직비디오 제작 진행중입니다..."
+                }
+                http_status = status.HTTP_200_OK
+            elif task.state == 'SUCCESS':
+                response_data = {
+                    "code": "M012",
+                    "task_status": "SUCCESS",
+                    "HTTPstatus": 201,
+                    "message": "뮤직비디오 제작 성공하였습니다."
+                }
+                http_status = status.HTTP_201_CREATED
+            elif task.state == 'FAILURE':
+                response_data = {
+                    "code": "M012_2",
+                    "task_status": "FAILURE",
+                    "HTTPstatus": 500,
+                    "message": "뮤직비디오 제작 실패하였습니다."
+                }
+                http_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+            else:
+                response_data = {
+                    "code": "M012_3",
+                    "task_status": task.state,
+                    'HTTPstatus': 200,
+                    'message': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
+                }
+                http_status = status.HTTP_200_OK
+            return Response(response_data, status=http_status)
+        except:
+            response_data = {
+                "code": "M012_4",
+                "task_id": task_id,
+                "HTTPstatus": 404,
+                "message": "task가 존재하지 않습니다."
             }
-        elif task.state != 'FAILURE':
-            response = {
-                'state': task.state,
-                'result': task.result
-            }
-        else:
-            response = {
-                'state': task.state,
-                'status': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
-            }
-
-        return Response(response)
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
