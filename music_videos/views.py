@@ -1222,11 +1222,12 @@ class MusicVideoSearchView(APIView):
                                 "string",
                                 "string",
                             ],
-                            "instrument": [
+                            "instruments": [
                                 "string",
                                 "string",
                                 "string",
                             ],
+                            "style_name": "string",
                             "language": "string",
                             "vocal": "string",
                             "tempo": "string",
