@@ -2,14 +2,13 @@
 
 from music_videos.models import MusicVideo
 from config.celery import app
-from celery import group, chain, chord
+from celery import group, chord
 from django.conf import settings
 
 from .serializers import MusicVideoSerializer
 from .s3_utils import upload_file_to_s3
 
 from datetime import datetime
-import requests
 import json
 import time
 from moviepy.editor import AudioFileClip, VideoFileClip, concatenate_videoclips, vfx
@@ -39,20 +38,31 @@ def suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject):
         "Authorization": f"Bearer {settings.SUNO_API_KEY}"
     }
     data = {
-        "prompt": (
-            lyrics
-        ),
+        "prompt": lyrics,
         "tags": f"{genre_names_str}, {instruments_str}, {tempo}, {vocal}",
         "custom_mode": True,
         "title": subject
     }
-    response = requests.post(url, headers=headers, data=json.dumps(data))
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Error creating Suno task: {e}")
+        return {"error": "Error creating Suno task", "details": str(e)}
 
     if response.status_code == 200:
         task_id = response.json()['data']['task_id']
 
+        timeout = 15 * 60
+        elapsed_time = 0
+        polling_interval = 30
+
         while (True):
-            time.sleep(5)
+            time.sleep(polling_interval)
+            elapsed_time += polling_interval
+
+            if elapsed_time > timeout:
+                return {"error": "Polling timeout exceeded 15 minutes"}
 
             url = f"https://api.sunoapi.com/api/v1/suno/clip/{task_id}"
             headers = {
@@ -66,16 +76,20 @@ def suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject):
                     break
             else:
                 return
-        get_key = list(result['data']['clips'].keys())[1]
-        audio_url = result['data']['clips'][get_key]['audio_url']
-        duration = result['data']['clips'][get_key]['metadata']['duration']
+        get_key1 = list(result['data']['clips'].keys())[0]
+        get_key2 = list(result['data']['clips'].keys())[1]
 
-        print(audio_url)
-        print(duration)
+        duration1 = result['data']['clips'][get_key1]['metadata']['duration']
+        duration2 = result['data']['clips'][get_key2]['metadata']['duration']
 
-        return audio_url, duration
+        if(duration2 < duration1):
+            audio_url = result['data']['clips'][get_key2]['audio_url']
+            return audio_url, duration2
+        else:
+            audio_url = result['data']['clips'][get_key1]['audio_url']
+            return audio_url, duration1
     else:
-        return
+        return {"error": "Failed to create Suno task", "status_code": response.status_code}
 
 
 def create_reversed_video_clip(url, clip_count, last_clip_size):
@@ -106,7 +120,7 @@ def create_reversed_video_clip(url, clip_count, last_clip_size):
             clips.append(video_cut)
             final_clip = concatenate_videoclips(clips)
         else:
-            clips.append(reversed_video)
+            clips.append(video)
             reversed_video_cut = reversed_video.subclip(0, last_clip_size)
             clips.append(reversed_video_cut)
             final_clip = concatenate_videoclips(clips)
@@ -146,13 +160,20 @@ def create_video(line, style):
         "Authorization": settings.RUNWAYML_API_KEY
     }
 
+    timeout = 30 * 60  # 30 minutes in seconds
+    elapsed_time = 0
+    polling_interval = 15  # seconds
+
     while (True):
-        time.sleep(15)
+        time.sleep(polling_interval)
+        elapsed_time += polling_interval
+
+        if elapsed_time > timeout:
+            return {"error": "Polling timeout exceeded 30 minutes"}
+
         response = requests.get(url, headers=headers).json()
         if (response['status'] == 'success'):
             break
-
-    print('video 생성 성공',response['url'])
     return response['url']
 
 
@@ -241,20 +262,4 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
         os.remove(audio_filename)
         os.remove(video_filename)
         print("유효한 이미지가 없어 비디오를 생성할 수 없습니다.")
-
-
-@app.task
-def create_music_video(client_ip, current_time, subject, vocal, tempo, member_id, language, genre_names_str, instruments_str, filtered_lines, lyrics, genres_ids, instruments_ids, style):
-
-    music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
-    print("music_task 성공", music_task)
-    video_tasks = group(
-        create_video.s(line, style) for line in filtered_lines
-    )
-    print("video_tasks 성공", video_tasks)
-    music_video_task = chord(
-        header = [music_task] + video_tasks.tasks,
-        body = mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids, tempo, member_id)
-    )
-    result = music_video_task.apply_async()
-    return result.id
+        return

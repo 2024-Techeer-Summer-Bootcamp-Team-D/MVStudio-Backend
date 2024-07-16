@@ -1321,6 +1321,63 @@ class MusicVideoSearchView(APIView):
 
 
 class MusicVideoStatusView(APIView):
+    @swagger_auto_schema(
+        operation_description="뮤직비디오 제작 작업의 상태를 확인합니다",
+        manual_parameters=[
+            openapi.Parameter(
+                'task_id',
+                openapi.IN_PATH,
+                description="뮤직비디오 제작 작업의 ID",
+                type=openapi.TYPE_STRING
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="작업이 진행 중이거나 커스텀 상태입니다",
+                examples={
+                    "application/json": {
+                        "code": "M012_1",
+                        "task_status": "PENDING",
+                        "HTTPstatus": 200,
+                        "message": "뮤직비디오 제작 진행중입니다..."
+                    }
+                }
+            ),
+            201: openapi.Response(
+                description="작업이 성공적으로 완료되었습니다",
+                examples={
+                    "application/json": {
+                        "code": "M012",
+                        "task_status": "SUCCESS",
+                        "HTTPstatus": 201,
+                        "message": "뮤직비디오 제작 성공하였습니다."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="작업이 실패하였습니다",
+                examples={
+                    "application/json": {
+                        "code": "M012_2",
+                        "task_status": "FAILURE",
+                        "HTTPstatus": 500,
+                        "message": "뮤직비디오 제작 실패하였습니다."
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="작업을 찾을 수 없습니다",
+                examples={
+                    "application/json": {
+                        "code": "M012_4",
+                        "task_id": "task_id",
+                        "HTTPstatus": 404,
+                        "message": "task가 존재하지 않습니다."
+                    }
+                }
+            )
+        }
+    )
     def get(self, request, task_id):
         try:
             task = AsyncResult(task_id)
