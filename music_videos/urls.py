@@ -18,6 +18,6 @@ urlpatterns = [
     path('histories/<int:history_id>', views.HistoryUpdateView.as_view(), name='update-history'),
     path('histories-list/<int:member_id>', views.HistoryDetailView.as_view(), name='history-detail'),
     path('searches', views.MusicVideoSearchView.as_view(), name='music-video-search'),
-    path('status/<str:task_id>/', views.MusicVideoStatusView.as_view(), name='music-video-status'),
+    path('status/<str:task_id>', views.MusicVideoStatusView.as_view(), name='music-video-status'),
 
 ]

@@ -1322,22 +1322,47 @@ class MusicVideoSearchView(APIView):
 
 class MusicVideoStatusView(APIView):
     def get(self, request, task_id):
-        task = AsyncResult(task_id)
+        try:
+            task = AsyncResult(task_id)
 
-        if task.state == 'PENDING':
-            response = {
-                'state': task.state,
-                'status': 'Pending...'
+            if task.state == 'PENDING':
+                response_data = {
+                    "code": "M012_1",
+                    "task_status": "PENDING",
+                    "HTTPstatus": 200,
+                    "message": "뮤직비디오 제작 진행중입니다..."
+                }
+                http_status = status.HTTP_200_OK
+            elif task.state == 'SUCCESS':
+                response_data = {
+                    "code": "M012",
+                    "task_status": "SUCCESS",
+                    "HTTPstatus": 201,
+                    "message": "뮤직비디오 제작 성공하였습니다."
+                }
+                http_status = status.HTTP_201_CREATED
+            elif task.state == 'FAILURE':
+                response_data = {
+                    "code": "M012_2",
+                    "task_status": "FAILURE",
+                    "HTTPstatus": 500,
+                    "message": "뮤직비디오 제작 실패하였습니다."
+                }
+                http_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+            else:
+                response_data = {
+                    "code": "M012_3",
+                    "task_status": task.state,
+                    'HTTPstatus': 200,
+                    'message': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
+                }
+                http_status = status.HTTP_200_OK
+            return Response(response_data, status=http_status)
+        except:
+            response_data = {
+                "code": "M012_4",
+                "task_id": task_id,
+                "HTTPstatus": 404,
+                "message": "task가 존재하지 않습니다."
             }
-        elif task.state != 'FAILURE':
-            response = {
-                'state': task.state,
-                'result': task.result
-            }
-        else:
-            response = {
-                'state': task.state,
-                'status': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
-            }
-
-        return Response(response)
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
