@@ -179,25 +179,28 @@ class MusicVideoView(APIView):
             tempo = request.data['tempo']
             member_id = request.data['member_id']
             language = request.data['language']
+            lyrics = request.data['lyrics']
+            lyrics_eng = request.data['lyrics_eng']
+
             # 장르 쉼표로 구분
             genres_ids = request.data['genres_ids']
             genres = Genre.objects.filter(id__in=genres_ids)
             genre_names = [str(genre) for genre in genres]
             genre_names_str = ", ".join(genre_names)
 
+            # 악기 쉼표로 구분
             instruments_ids = request.data['instruments_ids']
             instruments = Instrument.objects.filter(id__in=instruments_ids)
             instruments_names = [str(instrument) for instrument in instruments]
             instruments_str = ", ".join(instruments_names)
 
+            # 스타일 쉼표로 구분
             style_id = request.data['style_id']
             style = Style.objects.get(id=style_id)
             style_name = str(style)
 
-            # lyrics 값을 가져옴
-            lyrics = request.data['lyrics']
-
-            if not subject or not vocal or not tempo or not language or not genres_ids or not instruments_ids or not lyrics or not style_id:
+            # 필수 조건 예외 처리
+            if not subject or not vocal or not tempo or not language or not genres_ids  or not lyrics or not style_id or not lyrics_eng:
                 response_data = {
                     "code": "M002_1",
                     "status": 400,
@@ -207,16 +210,16 @@ class MusicVideoView(APIView):
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 텍스트를 줄 단위로 나누기
-            lines = lyrics.strip().split('\n')
+            lines = lyrics_eng.strip().split('\n')
             # [Verse]와 같은 태그를 제외하고 저장
             filtered_lines = [line for line in lines if not line.startswith('[') and line.strip()]
 
             music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
-            print("music_task 성공", music_task)
+
             video_tasks = group(
                 create_video.s(line, style_name) for line in filtered_lines
             )
-            print("video_tasks 성공", video_tasks)
+
             music_video_task = chord(
                 header=[music_task] + video_tasks.tasks,
                 body=mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids,
