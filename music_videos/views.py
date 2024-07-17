@@ -7,6 +7,7 @@ from drf_yasg import openapi
 
 from django.conf import settings
 from django.core.paginator import Paginator
+from django.db.models.functions import TruncDate
 from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History, Style
 from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
@@ -14,10 +15,10 @@ from .tasks import suno_music, create_video, mv_create
 from celery import group, chord
 from celery.result import AsyncResult
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import openai
-from django.db.models import Case, When
+from django.db.models import Case, Count, When
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
@@ -1461,8 +1462,8 @@ class MusicVideoStatusView(APIView):
 
 class MusicVideoDailyGraphView(APIView):
     @swagger_auto_schema(
-        operation_summary="자신의 채널 조회수 변화추이 그래프 조회",
-        operation_description="자신의 뮤직비디오 일별 조회수를 그래프로 확인할 수 있습니다.",
+        operation_summary="일별 조회수 분석 기능 구현",
+        operation_description="자신의 뮤직비디오 일별 조회수를 통계로 분석할 수 있습니다.",
         responses={
             200: openapi.Response(
                 description="뮤직비디오 일별 조회수 조회 성공",
@@ -1507,7 +1508,26 @@ class MusicVideoDailyGraphView(APIView):
                             "total_views": 0,
                             "popular_mv_subject": "string",
                             "popular_mv_views": 0,
-                        }
+                            "daily_views": [
+                            {
+                                "daily_views_id": 0,
+                                "daily_views_date": "yyyy-mm-dd",
+                                "daily_views_views": 0,
+                            },
+                            {
+                                "genre_id": 1,
+                                "genre_name": "string",
+                            },
+                            {
+                                "genre_id": 2,
+                                "genre_name": "string",
+                            },
+                            {
+                                "genre_id": 3,
+                                "genre_name": "string",
+                            },
+                        ],
+                            }
                         }
                     ]
                 }
@@ -1541,15 +1561,39 @@ class MusicVideoDailyGraphView(APIView):
 
         member_name = member.nickname
         music_videos = MusicVideo.objects.filter(member_id=member)
+
+        start_date = member.created_at.date()
+        end_date = datetime.now().date()
+        date_range = (end_date - start_date).days + 1
+        daily_views = {(start_date + timedelta(days=i)).strftime('%Y-%m-%d'): 0 for i in range(date_range)}
+
+        history_data = (History.objects
+                        .filter(mv_id__in=music_videos)
+                        .annotate(day=TruncDate('created_at'))
+                        .values('day')
+                        .annotate(views=Count('id'))
+                        .order_by('day'))
+
+        for data in history_data:
+            daily_views[data['day'].strftime('%Y-%m-%d')] = data['views']
+
         if not music_videos.exists():
             response_data = {
                 "code": "M013",
                 "status": 200,
                 "message": "뮤직비디오 개수가 0개입니다.",
-                "total_music_videos": 0,
+                "member_name": member_name,
+                "total_mv": 0,
                 "total_views": 0,
                 "popular_mv_subject": "",
-                "popular_mv_views": 0
+                "popular_mv_views": 0,
+                "daily_views": [
+                    {
+                        "daily_views_id": index + 1,
+                        "daily_views_date": date,
+                        "daily_views_views": views
+                    } for index, (date, views) in enumerate(daily_views.items())
+                ],
             }
             logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
             return Response(response_data, status=200)
@@ -1574,6 +1618,13 @@ class MusicVideoDailyGraphView(APIView):
             "total_views": total_views,
             "popular_mv_subject": popular_mv_subject,
             "popular_mv_views": popular_mv_views,
+            "daily_views": [
+                    {
+                        "daily_views_id": index + 1,
+                        "daily_views_date": date,
+                        "daily_views_views": views
+                    } for index, (date, views) in enumerate(daily_views.items())
+                ],
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
