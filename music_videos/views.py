@@ -85,33 +85,68 @@ class CreateLyricsView(APIView):
             prompt = (
                 f"Create song lyrics based on the keyword '{subject}'. "
                 f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
-                f"The song should have 4 verses, each with 4 lines, formatted as follows:\n\n"
-                f"[Verse]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Verse 2]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Bridge]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Verse 3]\nLine 1\nLine 2\nLine 3\nLine 4\n"
+                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and At least 2 sentences per line(very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
+                f"---(Original Lyrics)---<br /><br />"
+                f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[End]<br /><br />"
+                
+                f"---(English Translation)---<br /><br />"
+                f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[End]<br /><br />"
             )
 
             openai.api_key = settings.OPENAI_API_KEY
             response = openai.chat.completions.create(
-                model = "gpt-3.5-turbo",
-                # model="text-davinci-003",
+                model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant that writes song lyrics."},
+                    {"role": "system",
+                     "content": "You are a helpful assistant that writes song lyrics and provides translations."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=300,
+                max_tokens=1000,
                 n=3
             )
-            lyrics1 = response.choices[0].message.content
-            lyrics2 = response.choices[1].message.content
-            lyrics3 = response.choices[2].message.content
+
+            # 가사 추출
+            def extract_lyrics(content):
+                def extract_part(text, start_marker, end_marker):
+                    start_idx = text.find(start_marker)
+                    if start_idx == -1:
+                        return ""
+                    start_idx += len(start_marker)
+                    end_idx = text.find(end_marker, start_idx)
+                    if end_idx == -1:
+                        # end_marker가 없는 경우, 텍스트 끝에 end_marker를 추가
+                        text += end_marker
+                        end_idx = text.find(end_marker, start_idx)
+                    end_idx += len(end_marker)
+                    return text[start_idx:end_idx]
+
+                original_lyrics = extract_part(content, "---(Original Lyrics)---<br /><br />", "[End]<br /><br />")
+                translation_lyrics = extract_part(content, "---(English Translation)---<br /><br />",
+                                                  "[End]<br /><br />")
+                return original_lyrics, translation_lyrics
+
+            # print(f"0번째 가사 : {response.choices[0].message.content}")
+            # print(f"1번째 가사 : {response.choices[1].message.content}")
+            # print(f"2번째 가사 : {response.choices[2].message.content}")
+
+            lyrics1_ori, lyrics1_eng = extract_lyrics(response.choices[0].message.content)
+            lyrics2_ori, lyrics2_eng = extract_lyrics(response.choices[1].message.content)
+            lyrics3_ori, lyrics3_eng = extract_lyrics(response.choices[2].message.content)
 
             response_data = {
-                "lyrics": {
-                    "lyrics1": lyrics1,
-                    "lyrics2": lyrics2,
-                    "lyrics3": lyrics3,
+                "lyrics_ori": {
+                    "lyrics1": lyrics1_ori,
+                    "lyrics2": lyrics2_ori,
+                    "lyrics3": lyrics3_ori,
+                },
+                "lyrics_eng": {
+                    "lyrics1": lyrics1_eng,
+                    "lyrics2": lyrics2_eng,
+                    "lyrics3": lyrics3_eng,
                 },
                 "code": "M007",
                 "status": 201,
@@ -659,7 +694,7 @@ class GenreListView(APIView):
             genres = Genre.objects.all()
             serializer = GenreSerializer(genres, many=True)
             response_data = {
-                "data": [
+                "genres": [
                     {
                         "genre_id": item["id"],
                         "genre_name": item["name"],
