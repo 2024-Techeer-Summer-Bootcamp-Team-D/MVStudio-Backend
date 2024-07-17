@@ -32,7 +32,6 @@ from music_videos.s3_utils import upload_file_to_s3
 
 logger = logging.getLogger(__name__)
 
-
 class MemberSignUpView(APIView):
     @swagger_auto_schema(
         operation_summary="회원가입 API",

@@ -101,11 +101,10 @@ TEMPLATES = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'oauth.authenticate.SafeJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
@@ -118,19 +117,32 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+# RDS MySQL 사용 Prod
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': env('MYSQL_DATABASE'),
+#         'USER': env('MYSQL_USER'),
+#         'PASSWORD': env('MYSQL_PASSWORD'),
+#         'HOST': env('DATABASE_HOST'),
+#         'PORT': '3306',
+#         'OPTIONS': {
+#             'init_command': f"SET sql_mode='{env('DB_SQL_MODE')}'",
+#         },
+#     }
+# }
+# 도커에서 DB 사용 Dev
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': env('MYSQL_DATABASE'),
         'USER': env('MYSQL_USER'),
         'PASSWORD': env('MYSQL_PASSWORD'),
-        'HOST': env('DATABASE_HOST'),
+        'HOST': 'db',
         'PORT': '3306',
-        'OPTIONS': {
-            'init_command': f"SET sql_mode='{env('DB_SQL_MODE')}'",
-        },
     }
 }
+
 
 # Elasticsearch settings
 ELASTICSEARCH_DSL = {
@@ -149,6 +161,27 @@ ELASTICSEARCH_DSL = {
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'social_core.pipeline.user.get_username',
+    'social_core.pipeline.user.create_user',
+    'member.pipeline.save_profile_picture',  # 사용자 정보를 저장하는 커스텀 파이프라인 함수
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'social_core.pipeline.user.user_details',
+)
+
+AUTH_USER_MODEL = 'member.Member'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -189,6 +222,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+BASE_BACKEND_URL =  env('BASE_BACKEND_URL')
+BASE_FRONTEND_URL = env('BASE_FRONTEND_URL')
+
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
@@ -199,9 +235,6 @@ AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
 OPENAI_API_KEY = env('OPENAI_API_KEY')
 SUNO_API_KEY = env('SUNO_API_KEY')
 RUNWAYML_API_KEY = env('RUNWAYML_API_KEY')
-
-
-
 
 # OAuth 2.0
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
