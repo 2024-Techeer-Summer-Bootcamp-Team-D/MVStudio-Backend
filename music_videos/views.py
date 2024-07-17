@@ -1458,3 +1458,122 @@ class MusicVideoStatusView(APIView):
                 "message": "task가 존재하지 않습니다."
             }
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+
+class MusicVideoDailyGraphView(APIView):
+    @swagger_auto_schema(
+        operation_summary="자신의 채널 조회수 변화추이 그래프 조회",
+        operation_description="자신의 뮤직비디오 일별 조회수를 그래프로 확인할 수 있습니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 일별 조회수 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M013",
+                        "status": 200,
+                        "message": "뮤직비디오 일별 조회수 조회 성공",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "string",
+                            "popular_mv_views": 0,
+                        }
+                    }
+                }
+            ),
+            200: openapi.Response(
+                description="뮤직비디오 일별 조회수 변화 조회 성공",
+                examples={
+                    "application/json": [
+                        {
+                        "code": "M013_1",
+                        "status": 200,
+                        "message": "뮤직비디오 개수가 0개입니다.",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "",
+                            "popular_mv_views": 0,
+                        }
+                        },
+                        {
+                        "code": "M013",
+                        "status": 200,
+                        "message": "뮤직비디오 일별 조회수 변화 조회 성공",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "string",
+                            "popular_mv_views": 0,
+                        }
+                        }
+                    ]
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 일별 조회수 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "M013_2",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+
+    def get(self, request, member_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M013_2",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            return Response(response_data, status=404)
+
+        member_name = member.nickname
+        music_videos = MusicVideo.objects.filter(member_id=member)
+        if not music_videos.exists():
+            response_data = {
+                "code": "M013",
+                "status": 200,
+                "message": "뮤직비디오 개수가 0개입니다.",
+                "total_music_videos": 0,
+                "total_views": 0,
+                "popular_mv_subject": "",
+                "popular_mv_views": 0
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            return Response(response_data, status=200)
+
+        total_mv = music_videos.count()
+        total_views = 0
+        popular_mv_subject = ""
+        popular_mv_views = 0
+
+        for music_video in music_videos:
+            total_views += music_video.views
+            if music_video.views > popular_mv_views:
+                popular_mv_subject = music_video.subject
+                popular_mv_views = music_video.views
+
+        response_data = {
+            "code": "M013",
+            "status": 200,
+            "message": "뮤직비디오 일별 조회수 조회 성공",
+            "member_name": member_name,
+            "total_mv": total_mv,
+            "total_views": total_views,
+            "popular_mv_subject": popular_mv_subject,
+            "popular_mv_views": popular_mv_views,
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
