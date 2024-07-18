@@ -321,6 +321,7 @@ class MusicVideoView(APIView):
                             "subject": "string",
                             "cover_image": "string",
                             "member_name": "string",
+                            "profile_image": "string",
                             "length": 0,
                             "views": 0,
                             "genres": [
@@ -341,7 +342,7 @@ class MusicVideoView(APIView):
                             }
                         ],
                         "code": "M001",
-                        "HTTPstatus": 200,
+                        "status": 200,
                         "message": "뮤직비디오 목록 조회 성공",
                         "pagination": {
                             "current_page": 1,
