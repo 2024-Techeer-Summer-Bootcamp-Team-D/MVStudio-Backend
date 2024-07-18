@@ -8,7 +8,7 @@ from drf_yasg import openapi
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models.functions import TruncDate
-from member.models import Member
+from member.models import Member, Country
 from .models import Genre, Instrument, MusicVideo, History, Style
 from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
 from .tasks import suno_music, create_video, mv_create
@@ -1758,6 +1758,158 @@ class MusicVideoGenderGraphView(APIView):
                     "gender": gender,
                     "gender_views": gender_views
                 } for gender, gender_views in gender.items()
+            ],
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class MusicVideoCountryGraphView(APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 국가별 관련 통계 조회",
+        operation_description="자신의 뮤직비디오를 국가별 관련 통계로 분석할 수 있습니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 국가별 관련 통계 조회 성공",
+                examples={
+                    "application/json": [
+                        {
+                        "code": "G003_1",
+                        "status": 200,
+                        "message": "뮤직비디오 개수가 0개입니다.",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "",
+                            "popular_mv_views": 0,
+                            "country_data": [
+                                {
+                                    "gender": "string",
+                                    "gender_views": 0,
+                                },
+                                ]
+                        }
+                        },
+                        {
+                        "code": "G003",
+                        "status": 200,
+                        "message": "뮤직비디오 국가별 관련 통계 조회 성공",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "string",
+                            "popular_mv_views": 0,
+                            "country_data": [
+                            {
+                                "gender": "string",
+                                "gender_views": 0,
+                            },
+                            ],
+                            }
+                        }
+                    ]
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 국가별 관련 통계 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "G003_2",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request, member_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "G003_2",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            return Response(response_data, status=404)
+
+        member_name = member.nickname
+        music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
+
+        countries = Country.objects.filter(is_deleted=False)
+        country_list = []
+        for country in countries:
+            country_list.append({
+                'country_id': country.id,
+                'country_name': country.name,
+                'country_views': 0
+            })
+
+        # context = {
+        #     'country_list': country_list
+        # }
+
+        for video in music_videos:
+            viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
+            for viewer in viewers:
+                member_country = Member.objects.get(id=viewer).country
+                for country in country_list:
+                    if member_country.name == country['country_name']:
+                        country['country_views'] += 1
+
+        if not music_videos.exists():
+            response_data = {
+                "code": "G003_1",
+                "status": 200,
+                "message": "뮤직비디오 개수가 0개입니다.",
+                "member_name": member_name,
+                "total_mv": 0,
+                "total_views": 0,
+                "popular_mv_subject": "",
+                "popular_mv_views": 0,
+                "country_list": [
+                    {
+                        'country_id': item['country_id'],
+                        'country_name': item['country_name'],
+                        'country_views': item['country_views']
+                    } for item in country_list
+                ],
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            return Response(response_data, status=200)
+
+        total_mv = music_videos.count()
+        total_views = 0
+        popular_mv_subject = []
+        popular_mv_views = 0
+
+        for music_video in music_videos:
+            mv_views = MusicVideo.objects.get(id=music_video).views
+            total_views += mv_views
+            if mv_views >= popular_mv_views and mv_views != 0:
+                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
+                popular_mv_views = mv_views
+
+        response_data = {
+            "code": "G003",
+            "status": 200,
+            "message": "뮤직비디오 국가별 관련 통계 조회 성공",
+            "member_name": member_name,
+            "total_mv": total_mv,
+            "total_views": total_views,
+            "popular_mv_subject": popular_mv_subject,
+            "popular_mv_views": popular_mv_views,
+            "country_list": [
+                {
+                    'country_id': item['country_id'],
+                    'country_name': item['country_name'],
+                    'country_views': item['country_views']
+                } for item in country_list
             ],
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')

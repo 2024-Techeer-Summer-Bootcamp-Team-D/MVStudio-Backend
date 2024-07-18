@@ -21,5 +21,6 @@ urlpatterns = [
     path('status/<str:task_id>', views.MusicVideoStatusView.as_view(), name='music-video-status'),
     path('graph/daily/<int:member_id>', views.MusicVideoDailyGraphView.as_view(), name='music-video-graph-daily'),
     path('graph/gender/<int:member_id>', views.MusicVideoGenderGraphView.as_view(), name='music-video-graph-gender'),
+    path('graph/country/<int:member_id>', views.MusicVideoCountryGraphView.as_view(), name='music-video-graph-country'),
 
 ]
