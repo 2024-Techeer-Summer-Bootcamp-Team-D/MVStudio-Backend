@@ -22,5 +22,6 @@ urlpatterns = [
     path('graph/daily/<int:member_id>', views.MusicVideoDailyGraphView.as_view(), name='music-video-graph-daily'),
     path('graph/gender/<int:member_id>', views.MusicVideoGenderGraphView.as_view(), name='music-video-graph-gender'),
     path('graph/country/<int:member_id>', views.MusicVideoCountryGraphView.as_view(), name='music-video-graph-country'),
+    path('graph/age/<int:member_id>', views.MusicVideoAgeGraphView.as_view(), name='music-video-graph-age'),
 
 ]

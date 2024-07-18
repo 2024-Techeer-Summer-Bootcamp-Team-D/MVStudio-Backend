@@ -1785,8 +1785,19 @@ class MusicVideoCountryGraphView(APIView):
                             "popular_mv_views": 0,
                             "country_data": [
                                 {
-                                    "gender": "string",
-                                    "gender_views": 0,
+                                    "country_id": 0,
+                                    "country_name": "string",
+                                    "country_views": 0,
+                                },
+                                {
+                                    "country_id": 0,
+                                    "country_name": "string",
+                                    "country_views": 0,
+                                },
+                                {
+                                    "country_id": 0,
+                                    "country_name": "string",
+                                    "country_views": 0,
                                 },
                                 ]
                         }
@@ -1802,10 +1813,21 @@ class MusicVideoCountryGraphView(APIView):
                             "popular_mv_subject": "string",
                             "popular_mv_views": 0,
                             "country_data": [
-                            {
-                                "gender": "string",
-                                "gender_views": 0,
-                            },
+                                {
+                                    "country_id": 0,
+                                    "country_name": "string",
+                                    "country_views": 0,
+                                },
+                                {
+                                    "country_id": 0,
+                                    "country_name": "string",
+                                    "country_views": 0,
+                                },
+                                {
+                                    "country_id": 0,
+                                    "country_name": "string",
+                                    "country_views": 0,
+                                },
                             ],
                             }
                         }
@@ -1849,10 +1871,6 @@ class MusicVideoCountryGraphView(APIView):
                 'country_name': country.name,
                 'country_views': 0
             })
-
-        # context = {
-        #     'country_list': country_list
-        # }
 
         for video in music_videos:
             viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
@@ -1910,6 +1928,162 @@ class MusicVideoCountryGraphView(APIView):
                     'country_name': item['country_name'],
                     'country_views': item['country_views']
                 } for item in country_list
+            ],
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class MusicVideoAgeGraphView(APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 연령별 관련 통계 조회",
+        operation_description="자신의 뮤직비디오를 연령별 관련 통계로 분석할 수 있습니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 연령별 관련 통계 조회 성공",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "G004_1",
+                            "status": 200,
+                            "message": "뮤직비디오 개수가 0개입니다.",
+                            "data": {
+                                "member_name": "string",
+                                "total_mv": 0,
+                                "total_views": 0,
+                                "popular_mv_subject": "",
+                                "popular_mv_views": 0,
+                                "age_list": [
+                                    {
+                                        "age_group": "string",
+                                        "age_views": 0
+                                    },
+                                ]
+                            }
+                        },
+                        {
+                            "code": "G004",
+                            "status": 200,
+                            "message": "뮤직비디오 연령별 관련 통계 조회 성공",
+                            "data": {
+                                "member_name": "string",
+                                "total_mv": 0,
+                                "total_views": 0,
+                                "popular_mv_subject": "string",
+                                "popular_mv_views": 0,
+                                "age_list": [
+                                    {
+                                        "age_group": "string",
+                                        "age_views": 0
+                                    },
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 연령별 관련 통계 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "G004_2",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request, member_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "G004_2",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            return Response(response_data, status=404)
+
+        member_name = member.nickname
+        music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
+
+        age_list = [
+            {'age_group': '10s', 'age_views': 0},
+            {'age_group': '20s', 'age_views': 0},
+            {'age_group': '30s', 'age_views': 0},
+            {'age_group': '40s', 'age_views': 0},
+            {'age_group': '50s_and_above', 'age_views': 0}
+        ]
+
+        current_year = datetime.now().year
+
+        for video in music_videos:
+            viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
+            for viewer in viewers:
+                viewer_member = Member.objects.get(id=viewer)
+                birth_year = int(viewer_member.birthday.split('-')[0])
+                age = current_year - birth_year
+                if age < 20:
+                    age_list[0]['age_views'] += 1
+                elif age < 30:
+                    age_list[1]['age_views'] += 1
+                elif age < 40:
+                    age_list[2]['age_views'] += 1
+                elif age < 50:
+                    age_list[3]['age_views'] += 1
+                else:
+                    age_list[4]['age_views'] += 1
+
+        if not music_videos.exists():
+            response_data = {
+                "code": "G004_1",
+                "status": 200,
+                "message": "뮤직비디오 개수가 0개입니다.",
+                "member_name": member_name,
+                "total_mv": 0,
+                "total_views": 0,
+                "popular_mv_subject": "",
+                "popular_mv_views": 0,
+                "age_list": [
+                    {
+                        'age_group': item['age_group'],
+                        'age_views': item['age_views']
+                    } for item in age_list
+                ],
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            return Response(response_data, status=200)
+
+        total_mv = music_videos.count()
+        total_views = 0
+        popular_mv_subject = []
+        popular_mv_views = 0
+
+        for music_video in music_videos:
+            mv_views = MusicVideo.objects.get(id=music_video).views
+            total_views += mv_views
+            if mv_views >= popular_mv_views and mv_views != 0:
+                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
+                popular_mv_views = mv_views
+
+        response_data = {
+            "code": "G004",
+            "status": 200,
+            "message": "뮤직비디오 연령별 관련 통계 조회 성공",
+            "member_name": member_name,
+            "total_mv": total_mv,
+            "total_views": total_views,
+            "popular_mv_subject": popular_mv_subject,
+            "popular_mv_views": popular_mv_views,
+            "age_list": [
+                {
+                    'age_group': item['age_group'],
+                    'age_views': item['age_views']
+                } for item in age_list
             ],
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
