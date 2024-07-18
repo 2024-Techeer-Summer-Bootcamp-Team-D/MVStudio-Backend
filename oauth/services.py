@@ -8,11 +8,11 @@ GOOGLE_USER_INFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
 
 
 def google_get_access_token(google_token_api, code):
-    client_id = settings.GOOGLE_OAUTH2_CLIENT_ID
-    client_secret = settings.GOOGLE_OAUTH2_CLIENT_SECRET
+    client_id = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+    client_secret = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET
     code = code
     grant_type = 'authorization_code'
-    redirection_uri = settings.BASE_BACKEND_URL + "api/v1/auth/login/google/callback"
+    redirection_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/login/google/callback"
     state = "random_string"
 
     google_token_api += \

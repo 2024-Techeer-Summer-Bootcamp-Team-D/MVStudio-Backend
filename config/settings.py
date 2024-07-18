@@ -239,6 +239,7 @@ RUNWAYML_API_KEY = env('RUNWAYML_API_KEY')
 # OAuth 2.0
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
+REFRESH_TOKEN_SECRET = env('REFRESH_TOKEN_SECRET')
 
 # Django 세션 설정
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
@@ -249,7 +250,6 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
 # Celery 설정
-
 CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672//'
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_TIMEZONE = 'Asia/Seoul'

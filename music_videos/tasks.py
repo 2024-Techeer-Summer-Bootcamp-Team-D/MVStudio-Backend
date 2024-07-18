@@ -2,7 +2,6 @@
 
 from music_videos.models import MusicVideo
 from config.celery import app
-from celery import group, chord
 from django.conf import settings
 
 from .serializers import MusicVideoSerializer
@@ -180,7 +179,7 @@ def create_video(line, style):
 
 
 @app.task(queue='final_queue')
-def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids, tempo, member_id):
+def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids, tempo, username):
     audio_url = results[0][0]
     duration = results[0][1]
     urls = results[1:]
@@ -229,19 +228,19 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
 
     # 비디오를 S3에 업로드
     content_type = 'video/mp4'
-    s3_key = f"mv_videos/{member_id}_{timestamp}.mp4"
+    s3_key = f"mv_videos/{username}_{timestamp}.mp4"
     video_url = upload_file_to_s3(video_filename, s3_key, ExtraArgs={
         "ContentType": content_type,
     })
 
-    cover_image_url = upload_file_to_s3(buffer, f"cover_images/{member_id}_{timestamp}.png", {"ContentType": "image/png"})
+    cover_image_url = upload_file_to_s3(buffer, f"cover_images/{username}_{timestamp}.png", {"ContentType": "image/png"})
 
     if clips:
         os.remove(audio_filename)
         os.remove(video_filename)
         # 뮤직비디오 data
         data = {
-            "member_id": member_id,
+            "username": username,
             "subject": subject,
             "language": language,
             "vocal": vocal,

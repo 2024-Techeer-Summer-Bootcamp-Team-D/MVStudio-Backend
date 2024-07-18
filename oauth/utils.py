@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.utils import timezone
 from django.contrib.auth import get_user_model
 from member.models import Member
 
@@ -25,8 +24,7 @@ def social_member_create(username, password=None, **extra_fields):
 
     try:
         try:
-            member.first_name = extra_fields['first_name']
-            member.last_name = extra_fields['last_name']
+            member.name = extra_fields['name']
         except:
             try:
                 member.first_name = extra_fields['name']

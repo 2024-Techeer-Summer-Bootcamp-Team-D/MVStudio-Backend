@@ -42,7 +42,7 @@ class MusicVideoManager(models.Manager):
 
 class MusicVideo(models.Model):
     id = models.AutoField(primary_key=True)
-    member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
+    username = models.ForeignKey(Member, to_field='username', on_delete=models.CASCADE)
     subject = models.CharField(max_length=200)
     lyrics = models.CharField(max_length=2000)
     genre_id = models.ManyToManyField(Genre, through='MusicVideoGenre')
@@ -85,7 +85,7 @@ class MusicVideoInstrument(models.Model):
 class History(models.Model):
     id = models.AutoField(primary_key=True)
     mv_id = models.ForeignKey(MusicVideo, on_delete=models.CASCADE, db_column='mv_id')
-    member_id = models.ForeignKey(Member, on_delete=models.CASCADE, db_column='member_id')
+    username = models.ForeignKey(Member, to_field='username', on_delete=models.CASCADE)
     current_play_time = models.IntegerField(default=0)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
