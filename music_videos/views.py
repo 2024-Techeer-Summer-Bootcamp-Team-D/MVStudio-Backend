@@ -7,7 +7,7 @@ from drf_yasg import openapi
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models.functions import TruncDate
+
 from member.models import Member, Country
 from .models import Genre, Instrument, MusicVideo, History, Style
 from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
@@ -15,10 +15,10 @@ from .tasks import suno_music, create_video, mv_create
 from celery import group, chord
 from celery.result import AsyncResult
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import openai
-from django.db.models import Case, Count, When
+from django.db.models import Case, When
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
@@ -169,7 +169,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'username': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
@@ -433,7 +433,7 @@ class MusicVideoDevelopView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'username': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
@@ -586,7 +586,66 @@ class MusicVideoDevelopView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class MusicVideoDeleteView(ApiAuthMixin, APIView):
+
+class MusicVideoManageView(ApiAuthMixin, APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 상세 정보 조회 API",
+        operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 상세 정보 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M003",
+                        "status": 200,
+                        "message": "뮤직비디오 상세 정보 조회 성공",
+                        "data": {
+                            "subject": "string",
+                            "member_name": "string",
+                            "length": 0,
+                            "mv_file": "string",
+                            "views": 0,
+                            "lyrics": "string",
+                        }
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 상세 정보 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "M003_1",
+                        "status": 404,
+                        "message": "뮤직비디오를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request, mv_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            music_video = MusicVideo.objects.get(id=mv_id)
+        except MusicVideo.DoesNotExist:
+            response_data = {
+                "code": "M003_1",
+                "status": 404,
+                "message": "뮤직비디오를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /music_videos 404 does not existing')
+            return Response(response_data, status=404)
+
+        serializer = MusicVideoDetailSerializer(music_video)
+        response_data = {
+            "data": serializer.data,
+            "code": "M003",
+            "status": 200,
+            "message": "뮤직비디오 상세 정보 조회 성공"
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
+        return Response(response_data, status=200)
+
     @swagger_auto_schema(
         operation_summary="뮤직비디오 삭제 API",
         operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
@@ -643,6 +702,7 @@ class MusicVideoDeleteView(ApiAuthMixin, APIView):
         logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
         return Response(response_data, status=200)
 
+
 class GenreListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="장르 리스트 조회 API",
@@ -656,18 +716,22 @@ class GenreListView(ApiAuthMixin, APIView):
                             {
                                 "genre_id": 0,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                             {
                                 "genre_id": 1,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                             {
                                 "genre_id": 2,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                             {
                                 "genre_id": 3,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                         ],
                         "code": "M005",
@@ -871,122 +935,115 @@ class StyleListView(ApiAuthMixin, APIView):
             logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
-class MusicVideoDetailView(ApiAuthMixin, APIView):
-
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 상세 정보 조회 API",
-        operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 상세 정보 조회 성공",
-                examples={
-                    "application/json": {
-                        "code": "M003",
-                        "status": 200,
-                        "message": "뮤직비디오 상세 정보 조회 성공",
-                        "data": {
-                            "subject": "string",
-                            "member_name": "string",
-                            "length": 0,
-                            "mv_file": "string",
-                            "views": 0,
-                            "lyrics": "string",
-                        }
-                    }
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 상세 정보 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "M003_1",
-                        "status": 404,
-                        "message": "뮤직비디오를 찾을 수 없습니다."
-                    }
-                }
-            )
-        }
-    )
-    def get(self, request, mv_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            music_video = MusicVideo.objects.get(id=mv_id)
-        except MusicVideo.DoesNotExist:
-            response_data = {
-                "code": "M003_1",
-                "status": 404,
-                "message": "뮤직비디오를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} GET /music_videos 404 does not existing')
-            return Response(response_data, status=404)
-
-        serializer = MusicVideoDetailSerializer(music_video)
-        response_data = {
-            "data": serializer.data,
-            "code": "M003",
-            "status": 200,
-            "message": "뮤직비디오 상세 정보 조회 성공"
-        }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
-        return Response(response_data, status=200)
 
 class HistoryCreateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 삭제",
-        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
+        operation_summary="뮤직비디오 시청 기록 등록 API",
+        operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 등록합니다.",
         responses={
-            200: openapi.Response(
-                description="뮤직비디오 삭제 성공",
+            201: openapi.Response(
+                description="사용자의 뮤직비디오 시청 기록 등록 성공",
                 examples={
                     "application/json": {
-                        "code": "M004",
-                        "status": 200,
-                        "message": "뮤직비디오 삭제 성공",
-                        "data": {
-                            "member_id": "member_id",
-                            "subject": "subject",
-                            "is_deleted": "1",
-                        }
+                        "history_id": 0,
+                        "code": "M008",
+                        "status": 201,
+                        "message": "사용자의 뮤직비디오 시청 기록 등록 성공",
                     }
                 }
             ),
             404: openapi.Response(
-                description="뮤직비디오 삭제 실패",
+                description="잘못된 요청",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "M008_1",
+                            "status": 404,
+                            "message": "회원 정보를 찾을 수 없습니다."
+                        },
+                        {
+                            "code": "M008_2",
+                            "status": 404,
+                            "message": "뮤직 비디오를 찾을 수 없습니다."
+                        }
+                    ]
+                }
+            ),
+            409: openapi.Response(
+                description="이미 시청한 기록이 있습니다.",
                 examples={
                     "application/json": {
-                        "code": "M004_1",
-                        "status": 404,
-                        "message": "해당 뮤직비디오를 찾을 수 없습니다."
+                        "history_id": 0,
+                        "code": "M008_3",
+                        "status": 409,
+                        "message": "이미 시청한 기록이 있습니다.",
                     }
                 }
             ),
         }
     )
-    def delete(self, request, mv_id):
+    def post(self, request, username, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=mv_id)
+            member = Member.objects.get(username=username)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M008_1",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다"
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} /history member 404 does not existing')
+            return Response(response_data, status=404)
+        try:
+            mv = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
-                "code": "M004_1",
+                "code": "M008_2",
                 "status": 404,
-                "message": "해당 뮤직비디오를 찾을 수 없습니다."
+                "message": "뮤직 비디오를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
+            logging.warning(f'WARNING {client_ip} {current_time} POST /history music_video 404 does not existing')
             return Response(response_data, status=404)
-        music_video.is_deleted = True
-        music_video.save()
-        serializer = MusicVideoDeleteSerializer(music_video)
-        response_data = {
-            "code": "M004",
-            "status": 200,
-            "message": "뮤직비디오 삭제 성공",
-            "data": serializer.data
-        }
-        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
-        return Response(response_data, status=200)
+        try:
+            history_test = History.objects.get(username=member, mv_id=mv)
+            if history_test:
+                response_data = {
+                    "history_id": history_test.id,
+                    "code": "M008_3",
+                    "status": 409,
+                    "message": "이미 시청한 기록이 있습니다."
+                }
+                logging.warning(f'INFO {client_ip} {current_time} /history 409 conflict')
+                return Response(response_data, status=409)
+        except:
+            pass
+        try:
+            histories = History.objects.create(
+                username=member,
+                mv_id=mv,
+                current_play_time=0,
+                is_deleted=False
+            )
+            response_data = {
+                "history_id": histories.id,
+                "code": "M008",
+                "status": 201,
+                "message": "시청 기록 추가 성공"
+            }
+            mv.views += 1
+            mv.recently_viewed += 1
+            mv.save()
+            logging.info(f'INFO {client_ip} {current_time} GET /history 201 success')
+            return Response(response_data, status=201)
+        except Exception as e:
+            logging.error(f'ERROR {client_ip} {current_time} 500 failed: {str(e)}')
+            response_data = {
+                "code": "M008_4",
+                "status": 500,
+                "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
+            }
+            return Response(response_data, status=500)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -1290,6 +1347,7 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
 
 class MusicVideoStatusView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
+        operation_summary="뮤직비디오 제작 상태 확인 API",
         operation_description="뮤직비디오 제작 작업의 상태를 확인합니다",
         manual_parameters=[
             openapi.Parameter(
@@ -1391,633 +1449,3 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
                 "message": "task가 존재하지 않습니다."
             }
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
-
-class MusicVideoDailyGraphView(APIView):
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 일별 조회수 관련 통계 조회",
-        operation_description="자신의 뮤직비디오 일별 조회수를 통계로 분석할 수 있습니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 일별 조회수 관련 통계 조회 성공",
-                examples={
-                    "application/json": [
-                        {
-                        "code": "G001_1",
-                        "status": 200,
-                        "message": "뮤직비디오 개수가 0개입니다.",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "",
-                            "popular_mv_views": 0,
-                            "daily_views": [
-                                {
-                                    "daily_views_date": "yyyy-mm-dd",
-                                    "daily_views_views": 0,
-                                },
-                                {
-                                    "daily_views_date": "yyyy-mm-dd",
-                                    "daily_views_views": 0,
-                                },
-                                {
-                                    "daily_views_date": "yyyy-mm-dd",
-                                    "daily_views_views": 0,
-                                },
-                            ]
-                        }
-                        },
-                        {
-                        "code": "G001",
-                        "status": 200,
-                        "message": "뮤직비디오 일별 조회수 관련 통계 조회 성공",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "string",
-                            "popular_mv_views": 0,
-                            "daily_views": [
-                            {
-                                "daily_views_date": "yyyy-mm-dd",
-                                "daily_views_views": 0,
-                            },
-                            {
-                                "daily_views_date": "yyyy-mm-dd",
-                                "daily_views_views": 0,
-                            },
-                            {
-                                "daily_views_date": "yyyy-mm-dd",
-                                "daily_views_views": 0,
-                            },
-                            ],
-                            }
-                        }
-                    ]
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 일별 조회수 관련 통계 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "G001_2",
-                        "status": 404,
-                        "message": "회원 정보를 찾을 수 없습니다."
-                    }
-                }
-            )
-        }
-    )
-
-    def get(self, request, member_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = Member.objects.get(id=member_id)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "G001_2",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
-            return Response(response_data, status=404)
-
-        member_name = member.nickname
-        music_videos = MusicVideo.objects.filter(member_id=member)
-
-        start_date = member.created_at.date()
-        end_date = datetime.now().date()
-        date_range = (end_date - start_date).days + 1
-        daily_views = {(start_date + timedelta(days=i)).strftime('%Y-%m-%d'): 0 for i in range(date_range)}
-
-        history_data = (History.objects
-                        .filter(mv_id__in=music_videos)
-                        .annotate(day=TruncDate('created_at'))
-                        .values('day')
-                        .annotate(views=Count('id'))
-                        .order_by('day'))
-
-        for data in history_data:
-            daily_views[data['day'].strftime('%Y-%m-%d')] = data['views']
-
-        if not music_videos.exists():
-            response_data = {
-                "code": "G001_1",
-                "status": 200,
-                "message": "뮤직비디오 개수가 0개입니다.",
-                "member_name": member_name,
-                "total_mv": 0,
-                "total_views": 0,
-                "popular_mv_subject": "",
-                "popular_mv_views": 0,
-                "daily_views": [
-                    {
-                        "daily_views_date": date,
-                        "daily_views_views": views
-                    } for date, views in daily_views.items()
-                ],
-            }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
-            return Response(response_data, status=200)
-
-        total_mv = music_videos.count()
-        total_views = 0
-        popular_mv_subject = []
-        popular_mv_views = 0
-
-        for music_video in music_videos:
-            total_views += music_video.views
-            if music_video.views >= popular_mv_views and music_video.views != 0:
-                popular_mv_subject.append(music_video.subject)
-                popular_mv_views = music_video.views
-
-        response_data = {
-            "code": "G001",
-            "status": 200,
-            "message": "뮤직비디오 일별 조회수 관련 통계 조회 성공",
-            "member_name": member_name,
-            "total_mv": total_mv,
-            "total_views": total_views,
-            "popular_mv_subject": popular_mv_subject,
-            "popular_mv_views": popular_mv_views,
-            "daily_views": [
-                    {
-                        "daily_views_date": date,
-                        "daily_views_views": views,
-                    } for date, views in daily_views.items()
-                ],
-        }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-class MusicVideoGenderGraphView(APIView):
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 성별 관련 통계 조회",
-        operation_description="자신의 뮤직비디오를 성별 관련 통계로 분석할 수 있습니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 성별 관련 통계 조회 성공",
-                examples={
-                    "application/json": [
-                        {
-                        "code": "G002_1",
-                        "status": 200,
-                        "message": "뮤직비디오 개수가 0개입니다.",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "",
-                            "popular_mv_views": 0,
-                            "gender_list": [
-                                {
-                                    "gender_name": "string",
-                                    "gender_views": 0,
-                                },
-                                ]
-                        }
-                        },
-                        {
-                        "code": "G002",
-                        "status": 200,
-                        "message": "뮤직비디오 성별 관련 통계 조회 성공",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "string",
-                            "popular_mv_views": 0,
-                            "gender_list": [
-                            {
-                                "gender_name": "string",
-                                "gender_views": 0,
-                            },
-                            ],
-                            }
-                        }
-                    ]
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 성별 관련 통계 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "G002_2",
-                        "status": 404,
-                        "message": "회원 정보를 찾을 수 없습니다."
-                    }
-                }
-            )
-        }
-    )
-    def get(self, request, member_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = Member.objects.get(id=member_id)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "G002_2",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
-            return Response(response_data, status=404)
-
-        member_name = member.nickname
-        music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
-
-        gender_list = [
-            {'gender_name': 'Male', 'gender_views': 0},
-            {'gender_name': 'Female', 'gender_views': 0},
-        ]
-
-        for video in music_videos:
-            viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
-
-            for viewer in viewers:
-                member_gender = Member.objects.get(id=viewer).sex
-                if member_gender == "M":
-                    gender_list[0]['gender_views'] += 1
-                elif member_gender == "F":
-                    gender_list[1]['gender_views'] += 1
-
-        if not music_videos.exists():
-            response_data = {
-                "code": "G002_1",
-                "status": 200,
-                "message": "뮤직비디오 개수가 0개입니다.",
-                "member_name": member_name,
-                "total_mv": 0,
-                "total_views": 0,
-                "popular_mv_subject": "",
-                "popular_mv_views": 0,
-                "gender_list": [
-                    {
-                        "gender_name": item['gender_name'],
-                        "gender_views": item['gender_views']
-                    } for item in gender_list
-                ],
-            }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
-            return Response(response_data, status=200)
-
-        total_mv = music_videos.count()
-        total_views = 0
-        popular_mv_subject = []
-        popular_mv_views = 0
-
-        for music_video in music_videos:
-            mv_views = MusicVideo.objects.get(id=music_video).views
-            total_views += mv_views
-            if mv_views >= popular_mv_views and mv_views != 0:
-                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
-                popular_mv_views = mv_views
-
-        response_data = {
-            "code": "G002",
-            "status": 200,
-            "message": "뮤직비디오 성별 관련 통계 조회 성공",
-            "member_name": member_name,
-            "total_mv": total_mv,
-            "total_views": total_views,
-            "popular_mv_subject": popular_mv_subject,
-            "popular_mv_views": popular_mv_views,
-            "gender_list": [
-                    {
-                        "gender_name": item['gender_name'],
-                        "gender_views": item['gender_views']
-                    } for item in gender_list
-                ],
-        }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-class MusicVideoCountryGraphView(APIView):
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 국가별 관련 통계 조회",
-        operation_description="자신의 뮤직비디오를 국가별 관련 통계로 분석할 수 있습니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 국가별 관련 통계 조회 성공",
-                examples={
-                    "application/json": [
-                        {
-                        "code": "G003_1",
-                        "status": 200,
-                        "message": "뮤직비디오 개수가 0개입니다.",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "",
-                            "popular_mv_views": 0,
-                            "country_list": [
-                                {
-                                    "country_id": 0,
-                                    "country_name": "string",
-                                    "country_views": 0,
-                                },
-                                {
-                                    "country_id": 0,
-                                    "country_name": "string",
-                                    "country_views": 0,
-                                },
-                                {
-                                    "country_id": 0,
-                                    "country_name": "string",
-                                    "country_views": 0,
-                                },
-                                ]
-                        }
-                        },
-                        {
-                        "code": "G003",
-                        "status": 200,
-                        "message": "뮤직비디오 국가별 관련 통계 조회 성공",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "string",
-                            "popular_mv_views": 0,
-                            "country_list": [
-                                {
-                                    "country_id": 0,
-                                    "country_name": "string",
-                                    "country_views": 0,
-                                },
-                                {
-                                    "country_id": 0,
-                                    "country_name": "string",
-                                    "country_views": 0,
-                                },
-                                {
-                                    "country_id": 0,
-                                    "country_name": "string",
-                                    "country_views": 0,
-                                },
-                            ],
-                            }
-                        }
-                    ]
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 국가별 관련 통계 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "G003_2",
-                        "status": 404,
-                        "message": "회원 정보를 찾을 수 없습니다."
-                    }
-                }
-            )
-        }
-    )
-    def get(self, request, member_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = Member.objects.get(id=member_id)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "G003_2",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
-            return Response(response_data, status=404)
-
-        member_name = member.nickname
-        music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
-
-        countries = Country.objects.filter(is_deleted=False)
-        country_list = []
-        for country in countries:
-            country_list.append({
-                'country_id': country.id,
-                'country_name': country.name,
-                'country_views': 0
-            })
-
-        for video in music_videos:
-            viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
-            for viewer in viewers:
-                member_country = Member.objects.get(id=viewer).country
-                for country in country_list:
-                    if member_country.name == country['country_name']:
-                        country['country_views'] += 1
-
-        if not music_videos.exists():
-            response_data = {
-                "code": "G003_1",
-                "status": 200,
-                "message": "뮤직비디오 개수가 0개입니다.",
-                "member_name": member_name,
-                "total_mv": 0,
-                "total_views": 0,
-                "popular_mv_subject": "",
-                "popular_mv_views": 0,
-                "country_list": [
-                    {
-                        'country_id': item['country_id'],
-                        'country_name': item['country_name'],
-                        'country_views': item['country_views']
-                    } for item in country_list
-                ],
-            }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
-            return Response(response_data, status=200)
-
-        total_mv = music_videos.count()
-        total_views = 0
-        popular_mv_subject = []
-        popular_mv_views = 0
-
-        for music_video in music_videos:
-            mv_views = MusicVideo.objects.get(id=music_video).views
-            total_views += mv_views
-            if mv_views >= popular_mv_views and mv_views != 0:
-                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
-                popular_mv_views = mv_views
-
-        response_data = {
-            "code": "G003",
-            "status": 200,
-            "message": "뮤직비디오 국가별 관련 통계 조회 성공",
-            "member_name": member_name,
-            "total_mv": total_mv,
-            "total_views": total_views,
-            "popular_mv_subject": popular_mv_subject,
-            "popular_mv_views": popular_mv_views,
-            "country_list": [
-                {
-                    'country_id': item['country_id'],
-                    'country_name': item['country_name'],
-                    'country_views': item['country_views']
-                } for item in country_list
-            ],
-        }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-class MusicVideoAgeGraphView(APIView):
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 연령별 관련 통계 조회",
-        operation_description="자신의 뮤직비디오를 연령별 관련 통계로 분석할 수 있습니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 연령별 관련 통계 조회 성공",
-                examples={
-                    "application/json": [
-                        {
-                            "code": "G004_1",
-                            "status": 200,
-                            "message": "뮤직비디오 개수가 0개입니다.",
-                            "data": {
-                                "member_name": "string",
-                                "total_mv": 0,
-                                "total_views": 0,
-                                "popular_mv_subject": "",
-                                "popular_mv_views": 0,
-                                "age_list": [
-                                    {
-                                        "age_group": "string",
-                                        "age_views": 0
-                                    },
-                                ]
-                            }
-                        },
-                        {
-                            "code": "G004",
-                            "status": 200,
-                            "message": "뮤직비디오 연령별 관련 통계 조회 성공",
-                            "data": {
-                                "member_name": "string",
-                                "total_mv": 0,
-                                "total_views": 0,
-                                "popular_mv_subject": "string",
-                                "popular_mv_views": 0,
-                                "age_list": [
-                                    {
-                                        "age_group": "string",
-                                        "age_views": 0
-                                    },
-                                ]
-                            }
-                        }
-                    ]
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 연령별 관련 통계 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "G004_2",
-                        "status": 404,
-                        "message": "회원 정보를 찾을 수 없습니다."
-                    }
-                }
-            )
-        }
-    )
-    def get(self, request, member_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = Member.objects.get(id=member_id)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "G004_2",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
-            return Response(response_data, status=404)
-
-        member_name = member.nickname
-        music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
-
-        age_list = [
-            {'age_group': '10s', 'age_views': 0},
-            {'age_group': '20s', 'age_views': 0},
-            {'age_group': '30s', 'age_views': 0},
-            {'age_group': '40s', 'age_views': 0},
-            {'age_group': '50s_and_above', 'age_views': 0}
-        ]
-
-        current_year = datetime.now().year
-
-        for video in music_videos:
-            viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
-            for viewer in viewers:
-                viewer_member = Member.objects.get(id=viewer)
-                birth_year = int(viewer_member.birthday.split('-')[0])
-                age = current_year - birth_year
-                if age < 20:
-                    age_list[0]['age_views'] += 1
-                elif age < 30:
-                    age_list[1]['age_views'] += 1
-                elif age < 40:
-                    age_list[2]['age_views'] += 1
-                elif age < 50:
-                    age_list[3]['age_views'] += 1
-                else:
-                    age_list[4]['age_views'] += 1
-
-        if not music_videos.exists():
-            response_data = {
-                "code": "G004_1",
-                "status": 200,
-                "message": "뮤직비디오 개수가 0개입니다.",
-                "member_name": member_name,
-                "total_mv": 0,
-                "total_views": 0,
-                "popular_mv_subject": "",
-                "popular_mv_views": 0,
-                "age_list": [
-                    {
-                        'age_group': item['age_group'],
-                        'age_views': item['age_views']
-                    } for item in age_list
-                ],
-            }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
-            return Response(response_data, status=200)
-
-        total_mv = music_videos.count()
-        total_views = 0
-        popular_mv_subject = []
-        popular_mv_views = 0
-
-        for music_video in music_videos:
-            mv_views = MusicVideo.objects.get(id=music_video).views
-            total_views += mv_views
-            if mv_views >= popular_mv_views and mv_views != 0:
-                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
-                popular_mv_views = mv_views
-
-        response_data = {
-            "code": "G004",
-            "status": 200,
-            "message": "뮤직비디오 연령별 관련 통계 조회 성공",
-            "member_name": member_name,
-            "total_mv": total_mv,
-            "total_views": total_views,
-            "popular_mv_subject": popular_mv_subject,
-            "popular_mv_views": popular_mv_views,
-            "age_list": [
-                {
-                    'age_group': item['age_group'],
-                    'age_views': item['age_views']
-                } for item in age_list
-            ],
-        }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
-        return Response(response_data, status=status.HTTP_200_OK)
-
