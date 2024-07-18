@@ -207,13 +207,11 @@ class MemberDetailView(ApiAuthMixin, APIView):
             data['profile_image'] = image_url
         else:
             data['profile_image'] = member.profile_image
-        print(data)
+
         serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
-        print(0)
+
         if serializer.is_valid():
-            print(1)
             serializer.save()
-            print(2)
             response_data = {
                 "code": "P002",
                 "status": 200,

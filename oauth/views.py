@@ -40,8 +40,6 @@ class LoginGoogleCallbackView(PublicApiMixin, APIView):
         access_token = google_get_access_token(google_token_api, code)
         user_data = google_get_user_info(access_token=access_token)
 
-        print(user_data)
-
         profile_data = {
             'username': user_data['email'],
             'first_name': user_data.get('given_name', ''),
@@ -56,7 +54,7 @@ class LoginGoogleCallbackView(PublicApiMixin, APIView):
 
         response = redirect(settings.BASE_FRONTEND_URL)
         response = jwt_login(response=response, user=member)
-        print(response.data)
+
         return response
 
 
