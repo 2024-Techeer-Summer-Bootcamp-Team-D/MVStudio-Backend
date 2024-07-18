@@ -50,9 +50,11 @@ class LoginGoogleCallbackView(PublicApiMixin, APIView):
             'path': "google",
         }
 
-        member, _ = social_user_get_or_create(**profile_data)
-
-        response = redirect(settings.BASE_FRONTEND_URL)
+        member, is_exist = social_user_get_or_create(**profile_data)
+        if(is_exist):
+            response = redirect(settings.BASE_FRONTEND_LOGIN_URL)
+        else:
+            response = redirect(settings.BASE_FRONTEND_URL)
         response = jwt_login(response=response, user=member)
 
         return response
