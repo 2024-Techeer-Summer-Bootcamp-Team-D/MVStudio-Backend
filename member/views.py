@@ -192,7 +192,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
             return Response(response_data, status=404)
 
         data = request.data.copy()
-        image_file = request.FILES.get('profile_image', None)
+        image_file = data.get('profile_image', None)
 
         if image_file:
             content_type = image_file.content_type
