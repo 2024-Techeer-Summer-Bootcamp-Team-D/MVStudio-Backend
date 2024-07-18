@@ -1462,32 +1462,15 @@ class MusicVideoStatusView(APIView):
 
 class MusicVideoDailyGraphView(APIView):
     @swagger_auto_schema(
-        operation_summary="일별 조회수 분석 기능 구현",
+        operation_summary="뮤직비디오 일별 조회수 관련 통계 조회",
         operation_description="자신의 뮤직비디오 일별 조회수를 통계로 분석할 수 있습니다.",
         responses={
             200: openapi.Response(
-                description="뮤직비디오 일별 조회수 조회 성공",
-                examples={
-                    "application/json": {
-                        "code": "M013",
-                        "status": 200,
-                        "message": "뮤직비디오 일별 조회수 조회 성공",
-                        "data": {
-                            "member_name": "string",
-                            "total_mv": 0,
-                            "total_views": 0,
-                            "popular_mv_subject": "string",
-                            "popular_mv_views": 0,
-                        }
-                    }
-                }
-            ),
-            200: openapi.Response(
-                description="뮤직비디오 일별 조회수 변화 조회 성공",
+                description="뮤직비디오 일별 조회수 관련 통계 조회 성공",
                 examples={
                     "application/json": [
                         {
-                        "code": "M013_1",
+                        "code": "G001_1",
                         "status": 200,
                         "message": "뮤직비디오 개수가 0개입니다.",
                         "data": {
@@ -1496,12 +1479,26 @@ class MusicVideoDailyGraphView(APIView):
                             "total_views": 0,
                             "popular_mv_subject": "",
                             "popular_mv_views": 0,
+                            "daily_views": [
+                                {
+                                    "daily_views_date": "yyyy-mm-dd",
+                                    "daily_views_views": 0,
+                                },
+                                {
+                                    "daily_views_date": "yyyy-mm-dd",
+                                    "daily_views_views": 0,
+                                },
+                                {
+                                    "daily_views_date": "yyyy-mm-dd",
+                                    "daily_views_views": 0,
+                                },
+                            ]
                         }
                         },
                         {
-                        "code": "M013",
+                        "code": "G001",
                         "status": 200,
-                        "message": "뮤직비디오 일별 조회수 변화 조회 성공",
+                        "message": "뮤직비디오 일별 조회수 관련 통계 조회 성공",
                         "data": {
                             "member_name": "string",
                             "total_mv": 0,
@@ -1510,33 +1507,28 @@ class MusicVideoDailyGraphView(APIView):
                             "popular_mv_views": 0,
                             "daily_views": [
                             {
-                                "daily_views_id": 0,
                                 "daily_views_date": "yyyy-mm-dd",
                                 "daily_views_views": 0,
                             },
                             {
-                                "genre_id": 1,
-                                "genre_name": "string",
+                                "daily_views_date": "yyyy-mm-dd",
+                                "daily_views_views": 0,
                             },
                             {
-                                "genre_id": 2,
-                                "genre_name": "string",
+                                "daily_views_date": "yyyy-mm-dd",
+                                "daily_views_views": 0,
                             },
-                            {
-                                "genre_id": 3,
-                                "genre_name": "string",
-                            },
-                        ],
+                            ],
                             }
                         }
                     ]
                 }
             ),
             404: openapi.Response(
-                description="뮤직비디오 일별 조회수 조회 실패",
+                description="뮤직비디오 일별 조회수 관련 통계 조회 실패",
                 examples={
                     "application/json": {
-                        "code": "M013_2",
+                        "code": "G001_2",
                         "status": 404,
                         "message": "회원 정보를 찾을 수 없습니다."
                     }
@@ -1552,7 +1544,7 @@ class MusicVideoDailyGraphView(APIView):
             member = Member.objects.get(id=member_id)
         except Member.DoesNotExist:
             response_data = {
-                "code": "M013_2",
+                "code": "G001_2",
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
@@ -1579,7 +1571,7 @@ class MusicVideoDailyGraphView(APIView):
 
         if not music_videos.exists():
             response_data = {
-                "code": "M013",
+                "code": "G001_1",
                 "status": 200,
                 "message": "뮤직비디오 개수가 0개입니다.",
                 "member_name": member_name,
@@ -1589,10 +1581,9 @@ class MusicVideoDailyGraphView(APIView):
                 "popular_mv_views": 0,
                 "daily_views": [
                     {
-                        "daily_views_id": index + 1,
                         "daily_views_date": date,
                         "daily_views_views": views
-                    } for index, (date, views) in enumerate(daily_views.items())
+                    } for date, views in daily_views.items()
                 ],
             }
             logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
@@ -1600,19 +1591,19 @@ class MusicVideoDailyGraphView(APIView):
 
         total_mv = music_videos.count()
         total_views = 0
-        popular_mv_subject = ""
+        popular_mv_subject = []
         popular_mv_views = 0
 
         for music_video in music_videos:
             total_views += music_video.views
-            if music_video.views > popular_mv_views:
-                popular_mv_subject = music_video.subject
+            if music_video.views >= popular_mv_views and music_video.views != 0:
+                popular_mv_subject.append(music_video.subject)
                 popular_mv_views = music_video.views
 
         response_data = {
-            "code": "M013",
+            "code": "G001",
             "status": 200,
-            "message": "뮤직비디오 일별 조회수 조회 성공",
+            "message": "뮤직비디오 일별 조회수 관련 통계 조회 성공",
             "member_name": member_name,
             "total_mv": total_mv,
             "total_views": total_views,
@@ -1620,11 +1611,155 @@ class MusicVideoDailyGraphView(APIView):
             "popular_mv_views": popular_mv_views,
             "daily_views": [
                     {
-                        "daily_views_id": index + 1,
                         "daily_views_date": date,
-                        "daily_views_views": views
-                    } for index, (date, views) in enumerate(daily_views.items())
+                        "daily_views_views": views,
+                    } for date, views in daily_views.items()
                 ],
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class MusicVideoGenderGraphView(APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 성별 관련 통계 조회",
+        operation_description="자신의 뮤직비디오를 성별 관련 통계로 분석할 수 있습니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 성별 관련 통계 조회 성공",
+                examples={
+                    "application/json": [
+                        {
+                        "code": "G002_1",
+                        "status": 200,
+                        "message": "뮤직비디오 개수가 0개입니다.",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "",
+                            "popular_mv_views": 0,
+                            "gender_data": [
+                                {
+                                    "gender": "string",
+                                    "gender_views": 0,
+                                },
+                                ]
+                        }
+                        },
+                        {
+                        "code": "G002",
+                        "status": 200,
+                        "message": "뮤직비디오 성별 관련 통계 조회 성공",
+                        "data": {
+                            "member_name": "string",
+                            "total_mv": 0,
+                            "total_views": 0,
+                            "popular_mv_subject": "string",
+                            "popular_mv_views": 0,
+                            "gender_data": [
+                            {
+                                "gender": "string",
+                                "gender_views": 0,
+                            },
+                            ],
+                            }
+                        }
+                    ]
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 성별 관련 통계 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "G002_2",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request, member_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            member = Member.objects.get(id=member_id)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "G002_2",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            return Response(response_data, status=404)
+
+        member_name = member.nickname
+        music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
+
+        gender = {
+            "male": 0,
+            "female": 0
+        }
+
+        for video in music_videos:
+            viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
+
+            for viewer in viewers:
+                member_gender = Member.objects.get(id=viewer).sex
+                if member_gender == "M":
+                    gender["male"] += 1
+                elif member_gender == "F":
+                    gender["female"] += 1
+
+        if not music_videos.exists():
+            response_data = {
+                "code": "G002_1",
+                "status": 200,
+                "message": "뮤직비디오 개수가 0개입니다.",
+                "member_name": member_name,
+                "total_mv": 0,
+                "total_views": 0,
+                "popular_mv_subject": "",
+                "popular_mv_views": 0,
+                "gender_data": [
+                    {
+                        "gender": gender,
+                        "gender_views": gender_views
+                    } for gender, gender_views in gender.items()
+                ],
+            }
+            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            return Response(response_data, status=200)
+
+        total_mv = music_videos.count()
+        total_views = 0
+        popular_mv_subject = []
+        popular_mv_views = 0
+
+        for music_video in music_videos:
+            mv_views = MusicVideo.objects.get(id=music_video).views
+            total_views += mv_views
+            if mv_views >= popular_mv_views and mv_views != 0:
+                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
+                popular_mv_views = mv_views
+
+        response_data = {
+            "code": "G002",
+            "status": 200,
+            "message": "뮤직비디오 성별 관련 통계 조회 성공",
+            "member_name": member_name,
+            "total_mv": total_mv,
+            "total_views": total_views,
+            "popular_mv_subject": popular_mv_subject,
+            "popular_mv_views": popular_mv_views,
+            "gender_data": [
+                {
+                    "gender": gender,
+                    "gender_views": gender_views
+                } for gender, gender_views in gender.items()
+            ],
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        return Response(response_data, status=status.HTTP_200_OK)
+

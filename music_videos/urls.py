@@ -19,6 +19,7 @@ urlpatterns = [
     path('histories-list/<int:member_id>', views.HistoryDetailView.as_view(), name='history-detail'),
     path('searches', views.MusicVideoSearchView.as_view(), name='music-video-search'),
     path('status/<str:task_id>', views.MusicVideoStatusView.as_view(), name='music-video-status'),
-    path('graph/<int:member_id>', views.MusicVideoDailyGraphView.as_view(), name='music-video-graph'),
+    path('graph/daily/<int:member_id>', views.MusicVideoDailyGraphView.as_view(), name='music-video-graph-daily'),
+    path('graph/gender/<int:member_id>', views.MusicVideoGenderGraphView.as_view(), name='music-video-graph-gender'),
 
 ]
