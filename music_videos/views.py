@@ -1639,9 +1639,9 @@ class MusicVideoGenderGraphView(APIView):
                             "total_views": 0,
                             "popular_mv_subject": "",
                             "popular_mv_views": 0,
-                            "gender_data": [
+                            "gender_list": [
                                 {
-                                    "gender": "string",
+                                    "gender_name": "string",
                                     "gender_views": 0,
                                 },
                                 ]
@@ -1657,9 +1657,9 @@ class MusicVideoGenderGraphView(APIView):
                             "total_views": 0,
                             "popular_mv_subject": "string",
                             "popular_mv_views": 0,
-                            "gender_data": [
+                            "gender_list": [
                             {
-                                "gender": "string",
+                                "gender_name": "string",
                                 "gender_views": 0,
                             },
                             ],
@@ -1697,10 +1697,10 @@ class MusicVideoGenderGraphView(APIView):
         member_name = member.nickname
         music_videos = MusicVideo.objects.filter(member_id=member.id).values_list('id', flat=True)
 
-        gender = {
-            "male": 0,
-            "female": 0
-        }
+        gender_list = [
+            {'gender_name': 'Male', 'gender_views': 0},
+            {'gender_name': 'Female', 'gender_views': 0},
+        ]
 
         for video in music_videos:
             viewers = History.objects.filter(mv_id=video).values_list('member_id', flat=True)
@@ -1708,9 +1708,9 @@ class MusicVideoGenderGraphView(APIView):
             for viewer in viewers:
                 member_gender = Member.objects.get(id=viewer).sex
                 if member_gender == "M":
-                    gender["male"] += 1
+                    gender_list[0]['gender_views'] += 1
                 elif member_gender == "F":
-                    gender["female"] += 1
+                    gender_list[1]['gender_views'] += 1
 
         if not music_videos.exists():
             response_data = {
@@ -1722,11 +1722,11 @@ class MusicVideoGenderGraphView(APIView):
                 "total_views": 0,
                 "popular_mv_subject": "",
                 "popular_mv_views": 0,
-                "gender_data": [
+                "gender_list": [
                     {
-                        "gender": gender,
-                        "gender_views": gender_views
-                    } for gender, gender_views in gender.items()
+                        "gender_name": item['gender_name'],
+                        "gender_views": item['gender_views']
+                    } for item in gender_list
                 ],
             }
             logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
@@ -1753,12 +1753,12 @@ class MusicVideoGenderGraphView(APIView):
             "total_views": total_views,
             "popular_mv_subject": popular_mv_subject,
             "popular_mv_views": popular_mv_views,
-            "gender_data": [
-                {
-                    "gender": gender,
-                    "gender_views": gender_views
-                } for gender, gender_views in gender.items()
-            ],
+            "gender_list": [
+                    {
+                        "gender_name": item['gender_name'],
+                        "gender_views": item['gender_views']
+                    } for item in gender_list
+                ],
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
@@ -1783,7 +1783,7 @@ class MusicVideoCountryGraphView(APIView):
                             "total_views": 0,
                             "popular_mv_subject": "",
                             "popular_mv_views": 0,
-                            "country_data": [
+                            "country_list": [
                                 {
                                     "country_id": 0,
                                     "country_name": "string",
@@ -1812,7 +1812,7 @@ class MusicVideoCountryGraphView(APIView):
                             "total_views": 0,
                             "popular_mv_subject": "string",
                             "popular_mv_views": 0,
-                            "country_data": [
+                            "country_list": [
                                 {
                                     "country_id": 0,
                                     "country_name": "string",
