@@ -23,7 +23,6 @@ from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
 from oauth.mixins import ApiAuthMixin, PublicApiMixin
 
-
 class CreateLyricsView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="가사 생성 API",
@@ -128,10 +127,9 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class MusicVideoView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 생성",
+        operation_summary="뮤직비디오 생성 API",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
@@ -245,7 +243,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 목록 조회",
+        operation_summary="뮤직비디오 목록 조회 API",
         operation_description="모든 뮤직비디오 목록을 조회합니다. 정렬 및 페이지네이션 기능을 지원합니다.",
         manual_parameters=[
             openapi.Parameter(
@@ -390,7 +388,6 @@ class MusicVideoView(ApiAuthMixin, APIView):
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
-
 
 class MusicVideoDevelopView(APIView):
     @swagger_auto_schema(
@@ -552,10 +549,9 @@ class MusicVideoDevelopView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class MusicVideoDeleteView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 삭제",
+        operation_summary="뮤직비디오 삭제 API",
         operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
         responses={
             200: openapi.Response(
@@ -610,10 +606,9 @@ class MusicVideoDeleteView(ApiAuthMixin, APIView):
         logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
         return Response(response_data, status=200)
 
-
 class GenreListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="장르 리스트 조회",
+        operation_summary="장르 리스트 조회 API",
         operation_description="이 API는 사용자가 원하는 장르를 선택할 수 있도록 장르 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -685,10 +680,9 @@ class GenreListView(ApiAuthMixin, APIView):
             logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
-
 class InstrumentListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="악기 리스트 조회",
+        operation_summary="악기 리스트 조회 API",
         operation_description="이 API는 사용자가 원하는 악기를 선택할 수 있도록 악기 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -762,10 +756,9 @@ class InstrumentListView(ApiAuthMixin, APIView):
             }
             logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed : {e}')
             return Response(response_data, status=500)
-
 class StyleListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="영상 스타일 리스트 조회",
+        operation_summary="영상 스타일 리스트 조회 API",
         operation_description="이 API는 사용자가 원하는 영상 스타일을 선택할 수 있도록 영상 스타일 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -841,11 +834,10 @@ class StyleListView(ApiAuthMixin, APIView):
             logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
-
 class MusicVideoDetailView(ApiAuthMixin, APIView):
 
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 상세 정보 조회",
+        operation_summary="뮤직비디오 상세 정보 조회 API",
         operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
         responses={
             200: openapi.Response(
@@ -902,10 +894,9 @@ class MusicVideoDetailView(ApiAuthMixin, APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
         return Response(response_data, status=200)
 
-
 class HistoryCreateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 등록",
+        operation_summary="뮤직비디오 시청 기록 등록 API",
         operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 등록합니다.",
         responses={
             201: openapi.Response(
@@ -1017,10 +1008,9 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             }
             return Response(response_data, status=500)
 
-
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 갱신",
+        operation_summary="뮤직비디오 시청 기록 갱신 API",
         operation_description="사용자의 뮤직비디오 시청 기록을 갱신합니다.",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -1093,10 +1083,9 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
                 f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error')
             return Response(response_data, status=500)
 
-
 class HistoryDetailView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 조회",
+        operation_summary="뮤직비디오 시청 기록 조회 API",
         operation_description="사용자의 뮤직비디오 시청 기록을 조회합니다.",
         manual_parameters=[
             openapi.Parameter(
@@ -1198,10 +1187,9 @@ class HistoryDetailView(ApiAuthMixin, APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /histories 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
-
 class MusicVideoSearchView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 검색",
+        operation_summary="뮤직비디오 검색 API",
         operation_description="키워드로 뮤직비디오를 검색할 수 있습니다.",
         manual_parameters=[
             openapi.Parameter('mv_name', openapi.IN_QUERY, description="Music video name", type=openapi.TYPE_STRING),
@@ -1319,7 +1307,6 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
-
 
 class MusicVideoStatusView(ApiAuthMixin, APIView):
     @swagger_auto_schema(

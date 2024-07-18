@@ -8,9 +8,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.utils.translation import gettext_lazy as _
 
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
-
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
@@ -39,6 +36,15 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 class UserCreateApi(PublicApiMixin, APIView):
+    @swagger_auto_schema(
+        operation_summary="회원가입 API",
+        operation_description="Create a new user",
+        request_body=RegisterSerializer,
+        responses={
+            200: "User created successfully",
+            409: "Request Body Error"
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
         회원가입 api
@@ -56,9 +62,10 @@ class UserCreateApi(PublicApiMixin, APIView):
         response = jwt_login(response=response, user=user)
         return response
 
-@method_decorator(ensure_csrf_cookie, name="dispatch")
+
 class LoginApi(PublicApiMixin, APIView):
     @swagger_auto_schema(
+        operation_summary="로그인 API",
         operation_description="Log in with username and password",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -100,9 +107,9 @@ class LoginApi(PublicApiMixin, APIView):
         response = Response(status=status.HTTP_200_OK)
         return jwt_login(response, user)
 
-@method_decorator(csrf_protect, name='dispatch')
 class LogoutApi(PublicApiMixin, APIView):
     @swagger_auto_schema(
+        operation_summary="로그아웃 API",
         operation_description="Log out and delete refresh token cookie",
         responses={
             202: "Logout success"
@@ -121,7 +128,14 @@ class LogoutApi(PublicApiMixin, APIView):
 
 class MemberDetailView(ApiAuthMixin, APIView):
     parser_classes = (MultiPartParser, FormParser)
-
+    @swagger_auto_schema(
+        operation_summary="회원 정보 조회 API",
+        operation_description="Retrieve member details by username",
+        responses={
+            200: MemberDetailSerializer,
+            404: "회원 정보가 없습니다."
+        }
+    )
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -144,6 +158,16 @@ class MemberDetailView(ApiAuthMixin, APIView):
         }
         logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
         return Response(response_data, status=200)
+    @swagger_auto_schema(
+        operation_summary="회원 정보 수정 API",
+        operation_description="Update member details by username",
+        request_body=MemberDetailSerializer,
+        responses={
+            200: "회원 정보 수정 완료",
+            404: "회원 정보가 없습니다.",
+            500: "s3 이미지 업로드 실패."
+        }
+    )
     def patch(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -183,10 +207,13 @@ class MemberDetailView(ApiAuthMixin, APIView):
             data['profile_image'] = image_url
         else:
             data['profile_image'] = member.profile_image
+        print(data)
         serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
-
+        print(0)
         if serializer.is_valid():
+            print(1)
             serializer.save()
+            print(2)
             response_data = {
                 "code": "P002",
                 "status": 200,
@@ -195,7 +222,14 @@ class MemberDetailView(ApiAuthMixin, APIView):
             logger.info(f'INFO {client_ip} {current_time} PATCH /members/{username} 200 update success')
             return Response(response_data, status=200)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    @swagger_auto_schema(
+        operation_summary="회원 탈퇴 API",
+        operation_description="Delete the current logged-in user",
+        responses={
+            204: "Delete user success",
+            400: "passwords do not match"
+        }
+    )
     def delete(self, request, *args, **kwargs):
         """
         현재 로그인 된 유저 삭제
@@ -277,9 +311,10 @@ class CountryListView(ApiAuthMixin, APIView):
             logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 500 failed')
             return Response(response_data, status=500)
 
-@method_decorator(csrf_protect, name='dispatch')
-class RefreshJWTtoken(PublicApiMixin, APIView):
+
+class RefreshJWTtoken(APIView):
     @swagger_auto_schema(
+        operation_summary="Access Token 재발급 API",
         operation_description="Refresh JWT token",
         responses={
             200: openapi.Response(

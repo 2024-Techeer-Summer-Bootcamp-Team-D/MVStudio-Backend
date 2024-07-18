@@ -5,8 +5,8 @@ from . import views
 
 
 urlpatterns = [
-    path('lyrics', views.CreateLyricsView.as_view(), name='create_lyrics'),
-    path('', views.MusicVideoView.as_view(), name='create_music_video'),
+    path('lyrics', views.CreateLyricsView.as_view(), name='create-lyrics'),
+    path('', views.MusicVideoView.as_view(), name='create-music-video'),
     path('', views.MusicVideoView.as_view(), name='music-video-detail'),
     path('develop', views.MusicVideoDevelopView.as_view(), name='develop-music-video'),
     path('<int:music_video_id>', views.MusicVideoDeleteView.as_view(), name='delete-music-video'),

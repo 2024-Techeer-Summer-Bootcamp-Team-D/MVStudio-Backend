@@ -118,30 +118,30 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 # RDS MySQL 사용 Prod
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': env('MYSQL_DATABASE'),
-#         'USER': env('MYSQL_USER'),
-#         'PASSWORD': env('MYSQL_PASSWORD'),
-#         'HOST': env('DATABASE_HOST'),
-#         'PORT': '3306',
-#         'OPTIONS': {
-#             'init_command': f"SET sql_mode='{env('DB_SQL_MODE')}'",
-#         },
-#     }
-# }
-# 도커에서 DB 사용 Dev
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': env('MYSQL_DATABASE'),
         'USER': env('MYSQL_USER'),
         'PASSWORD': env('MYSQL_PASSWORD'),
-        'HOST': 'db',
+        'HOST': env('DATABASE_HOST'),
         'PORT': '3306',
+        'OPTIONS': {
+            'init_command': f"SET sql_mode='{env('DB_SQL_MODE')}'",
+        },
     }
 }
+# 도커에서 DB 사용 Dev
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': env('MYSQL_DATABASE'),
+#         'USER': env('MYSQL_USER'),
+#         'PASSWORD': env('MYSQL_PASSWORD'),
+#         'HOST': 'db',
+#         'PORT': '3306',
+#     }
+# }
 
 
 # Elasticsearch settings
@@ -219,6 +219,21 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
+
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'BearerAuth': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': "JWT Token"
+        }
+    },
+    'SECURITY_REQUIREMENTS': [{
+        'BearerAuth': []
+    }]
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

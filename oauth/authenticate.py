@@ -4,6 +4,7 @@ from rest_framework.authentication import BaseAuthentication, CSRFCheck
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import datetime, jwt
+from django.middleware.csrf import CsrfViewMiddleware
 
 User = get_user_model()
 
@@ -20,11 +21,12 @@ class SafeJWTAuthentication(BaseAuthentication):
             return None
 
         try:
-            prefix = authorization_header.split(' ')[0]
-            if prefix.lower() != 'jwt':
-                raise exceptions.AuthenticationFailed('Token is not jwt')
+            # prefix = authorization_header.split(' ')[0]
+            # if prefix.lower() != 'jwt':
+            #     raise exceptions.AuthenticationFailed('Token is not jwt')
 
-            access_token = authorization_header.split(' ')[1]
+            # access_token = authorization_header.split(' ')[1]
+            access_token = authorization_header
             payload = jwt.decode(
                 access_token, settings.SECRET_KEY, algorithms=['HS256']
             )
@@ -44,14 +46,16 @@ class SafeJWTAuthentication(BaseAuthentication):
         if not user.is_active:
             raise exceptions.AuthenticationFailed('User is inactive')
 
-        self.enforce_csrf(request)
+        # self.enforce_csrf(request)
         return (user, None)
 
     def enforce_csrf(self, request):
-        check = CSRFCheck()
+        # get_response 인자를 포함하여 CSRF 체크 인스턴스를 생성합니다.
+        csrf_check = CsrfViewMiddleware(get_response=lambda r: None)
 
-        check.process_request(request)
-        reason = check.process_view(request, None, (), {})
+        # 요청과 뷰를 처리합니다.
+        csrf_check.process_request(request)
+        reason = csrf_check.process_view(request, None, (), {})
         if reason:
             raise exceptions.PermissionDenied(f'CSRF Failed: {reason}')
 

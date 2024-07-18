@@ -81,6 +81,8 @@ class MemberDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
         fields = ['username', 'email', 'name', 'nickname', 'profile_image', 'comment', 'country', 'birthday', 'sex', 'youtube_account', 'instagram_account']
+        read_only_fields = ['username']
+
 
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:
