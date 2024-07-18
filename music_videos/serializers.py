@@ -36,7 +36,7 @@ class MusicVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'member_id', 'subject', 'language', 'vocal', 'length',
+            'id', 'username', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
             'genres', 'genres_ids', 'instruments', 'instruments_ids', 'style', 'style_id', 'tempo', 'lyrics'
         ]
@@ -86,7 +86,7 @@ class MusicVideoDeleteSerializer(serializers.ModelSerializer):
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'member_id', 'subject', 'is_deleted'
+            'id', 'username', 'subject', 'is_deleted'
         ]
 
 
@@ -95,14 +95,15 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
     genres = serializers.SerializerMethodField()
     instruments = serializers.SerializerMethodField()
     style_name = serializers.SerializerMethodField()
+    profile_image = serializers.SerializerMethodField()
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
+            'id', 'subject', 'cover_image', 'member_name', 'profile_image', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
         ]
 
     def get_member_name(self, obj):
-        return obj.member_id.nickname
+        return obj.username.nickname
     def get_style_name(self, obj):
         return obj.style_id.name
     def get_genres(self, obj):
@@ -112,6 +113,9 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
         if obj.instrument_id.exists():
             return [instrument.name for instrument in obj.instrument_id.all()]
         return []
+
+    def get_profile_image(self, obj):
+        return obj.member_id.profile_image
 
 class HistorySerializer(serializers.ModelSerializer):
     class Meta:

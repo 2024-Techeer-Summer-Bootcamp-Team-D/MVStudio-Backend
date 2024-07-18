@@ -22,9 +22,9 @@ from django.db.models import Case, Count, When
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
+from oauth.mixins import ApiAuthMixin, PublicApiMixin
 
-
-class CreateLyricsView(APIView):
+class CreateLyricsView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="가사 생성 API",
         operation_description="이 API는 가사를 생성하는 데 사용됩니다.",
@@ -163,14 +163,13 @@ class CreateLyricsView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-class MusicVideoView(APIView):
+class MusicVideoView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 생성",
+        operation_summary="뮤직비디오 생성 API",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'member_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'username': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
@@ -180,7 +179,7 @@ class MusicVideoView(APIView):
                 'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬 유형'),
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사')
             },
-            required=['member_id', 'subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics']
+            required=['username', 'subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics']
         ),
         responses={
             201: openapi.Response(
@@ -213,7 +212,7 @@ class MusicVideoView(APIView):
             subject = request.data['subject']
             vocal = request.data['vocal']
             tempo = request.data['tempo']
-            member_id = request.data['member_id']
+            username = request.data['username']
             language = request.data['language']
             lyrics = request.data['lyrics']
             lyrics_eng = request.data['lyrics_eng']
@@ -259,7 +258,7 @@ class MusicVideoView(APIView):
             music_video_task = chord(
                 header=[music_task] + video_tasks.tasks,
                 body=mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids,
-                                 tempo, member_id)
+                                 tempo, username)
             )
             task_id = music_video_task.apply_async().id
 
@@ -280,7 +279,7 @@ class MusicVideoView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 목록 조회",
+        operation_summary="뮤직비디오 목록 조회 API",
         operation_description="모든 뮤직비디오 목록을 조회합니다. 정렬 및 페이지네이션 기능을 지원합니다.",
         manual_parameters=[
             openapi.Parameter(
@@ -305,7 +304,7 @@ class MusicVideoView(APIView):
                 default=10
             ),
             openapi.Parameter(
-                'member_id',
+                'username',
                 openapi.IN_QUERY,
                 description="멤버 ID (필터링 용도)",
                 type=openapi.TYPE_STRING,
@@ -322,6 +321,7 @@ class MusicVideoView(APIView):
                             "subject": "string",
                             "cover_image": "string",
                             "member_name": "string",
+                            "profile_image": "string",
                             "length": 0,
                             "views": 0,
                             "genres": [
@@ -342,7 +342,7 @@ class MusicVideoView(APIView):
                             }
                         ],
                         "code": "M001",
-                        "HTTPstatus": 200,
+                        "status": 200,
                         "message": "뮤직비디오 목록 조회 성공",
                         "pagination": {
                             "current_page": 1,
@@ -375,18 +375,18 @@ class MusicVideoView(APIView):
         message = '뮤직비디오 정보 조회 성공'
 
         # 멤버 ID 필터링
-        member_id = request.query_params.get('member_id', None)
+        username = request.query_params.get('username', None)
         # 정렬
         sort = request.query_params.get('sort', None)
 
-        if member_id:
-            queryset = queryset.filter(member_id=member_id)
+        if username:
+            queryset = queryset.filter(username=username)
             message = f'사용자 뮤직비디오 정보 조회 성공'
         if sort:
             if (sort=='countries'):
-                member = Member.objects.get(id=member_id)
+                member = Member.objects.filter(username=username)
                 members = Member.objects.filter(country_id=member.country_id)
-                queryset = MusicVideo.objects.filter(member_id__in=members)
+                queryset = MusicVideo.objects.filter(username__in=members)
             else:
                 queryset = queryset.order_by(f'-{sort}')
                 message = f"뮤직비디오 {sort}순 정보 조회 성공"
@@ -426,7 +426,6 @@ class MusicVideoView(APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
-
 class MusicVideoDevelopView(APIView):
     @swagger_auto_schema(
         operation_summary="뮤직비디오 생성 API",
@@ -434,7 +433,7 @@ class MusicVideoDevelopView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'member_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'username': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
@@ -446,7 +445,7 @@ class MusicVideoDevelopView(APIView):
                 'cover_image': openapi.Schema(type=openapi.TYPE_STRING, description='커버 이미지 URL'),
                 'mv_file': openapi.Schema(type=openapi.TYPE_STRING, description='뮤직비디오 파일 URL')
             },
-            required=['member_id', 'subject', 'lyrics', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'cover_image', 'mv_file']
+            required=['username', 'subject', 'lyrics', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'cover_image', 'mv_file']
         ),
         responses={
             201: openapi.Response(
@@ -487,7 +486,7 @@ class MusicVideoDevelopView(APIView):
 
         try:
             # 요청 데이터 가져오기
-            member_id = request.data.get('member_id')
+            username = request.data.get('username')
             subject = request.data.get('subject')
             lyrics = request.data.get('lyrics')
 
@@ -510,7 +509,7 @@ class MusicVideoDevelopView(APIView):
             mv_file = request.data.get('mv_file')
 
             # 필수 필드 확인
-            if not (member_id and subject and lyrics and genres_ids and instruments_ids and style_id and tempo and language and vocal and cover_image and mv_file):
+            if not (username and subject and lyrics and genres_ids and instruments_ids and style_id and tempo and language and vocal and cover_image and mv_file):
                 response_data = {
                     "code": "M002_1",
                     "status": 400,
@@ -520,7 +519,7 @@ class MusicVideoDevelopView(APIView):
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 회원 정보 가져오기
-            member = Member.objects.get(id=member_id)
+            member = Member.objects.filter(username=username).first()
 
             # 영상 스타일 정보 가져오기
             style = Style.objects.get(id=style_id)
@@ -531,7 +530,7 @@ class MusicVideoDevelopView(APIView):
 
             # MusicVideo 객체 생성
             music_video = MusicVideo(
-                member_id=member,
+                username=member,
                 subject=subject,
                 lyrics=lyrics,
                 tempo=tempo,
@@ -559,11 +558,11 @@ class MusicVideoDevelopView(APIView):
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Member.DoesNotExist:
-            logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 Member with ID {member_id} does not exist')
+            logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 Member with ID {username} does not exist')
             return Response({
                 "code": "M002_1",
                 "status": 400,
-                "message": f"잘못된 회원 ID: {member_id}"
+                "message": f"잘못된 회원: {username}"
             }, status=status.HTTP_400_BAD_REQUEST)
         except Genre.DoesNotExist as e:
             logging.error(f'ERROR {client_ip} {current_time} POST /music_video_develop 400 Genre does not exist: {str(e)}')
@@ -587,10 +586,9 @@ class MusicVideoDevelopView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-class MusicVideoDeleteView(APIView):
+class MusicVideoDeleteView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 삭제",
+        operation_summary="뮤직비디오 삭제 API",
         operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
         responses={
             200: openapi.Response(
@@ -601,7 +599,7 @@ class MusicVideoDeleteView(APIView):
                         "status": 200,
                         "message": "뮤직비디오 삭제 성공",
                         "data": {
-                            "member_id": "member_id",
+                            "username": "username",
                             "subject": "subject",
                             "is_deleted": "1",
                         }
@@ -620,11 +618,11 @@ class MusicVideoDeleteView(APIView):
             ),
         }
     )
-    def delete(self, request, music_video_id):
+    def delete(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
+            music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M004_1",
@@ -642,13 +640,12 @@ class MusicVideoDeleteView(APIView):
             "message": "뮤직비디오 삭제 성공",
             "data": serializer.data
         }
-        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
         return Response(response_data, status=200)
 
-
-class GenreListView(APIView):
+class GenreListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="장르 리스트 조회",
+        operation_summary="장르 리스트 조회 API",
         operation_description="이 API는 사용자가 원하는 장르를 선택할 수 있도록 장르 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -720,10 +717,9 @@ class GenreListView(APIView):
             logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
-
-class InstrumentListView(APIView):
+class InstrumentListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="악기 리스트 조회",
+        operation_summary="악기 리스트 조회 API",
         operation_description="이 API는 사용자가 원하는 악기를 선택할 수 있도록 악기 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -797,10 +793,9 @@ class InstrumentListView(APIView):
             }
             logging.warning(f'WARNING {client_ip} {current_time} GET /instrument_list 500 failed : {e}')
             return Response(response_data, status=500)
-
-class StyleListView(APIView):
+class StyleListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="영상 스타일 리스트 조회",
+        operation_summary="영상 스타일 리스트 조회 API",
         operation_description="이 API는 사용자가 원하는 영상 스타일을 선택할 수 있도록 영상 스타일 리스트를 제공하는 기능을 합니다.",
         responses={
             200: openapi.Response(
@@ -876,11 +871,10 @@ class StyleListView(APIView):
             logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
-
-class MusicVideoDetailView(APIView):
+class MusicVideoDetailView(ApiAuthMixin, APIView):
 
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 상세 정보 조회",
+        operation_summary="뮤직비디오 상세 정보 조회 API",
         operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
         responses={
             200: openapi.Response(
@@ -913,11 +907,11 @@ class MusicVideoDetailView(APIView):
             )
         }
     )
-    def get(self, request, music_video_id):
+    def get(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
+            music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M003_1",
@@ -937,125 +931,66 @@ class MusicVideoDetailView(APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
         return Response(response_data, status=200)
 
-
-class HistoryCreateView(APIView):
+class HistoryCreateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 등록",
-        operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 등록합니다.",
+        operation_summary="뮤직비디오 삭제",
+        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
         responses={
-            201: openapi.Response(
-                description="사용자의 뮤직비디오 시청 기록 등록 성공",
+            200: openapi.Response(
+                description="뮤직비디오 삭제 성공",
                 examples={
                     "application/json": {
-                        "history_id": 0,
-                        "code": "M008",
-                        "status": 201,
-                        "message": "사용자의 뮤직비디오 시청 기록 등록 성공",
+                        "code": "M004",
+                        "status": 200,
+                        "message": "뮤직비디오 삭제 성공",
+                        "data": {
+                            "member_id": "member_id",
+                            "subject": "subject",
+                            "is_deleted": "1",
+                        }
                     }
                 }
             ),
             404: openapi.Response(
-                description="잘못된 요청",
-                examples={
-                    "application/json": [
-                        {
-                            "code": "M008_1",
-                            "status": 404,
-                            "message": "회원 정보를 찾을 수 없습니다."
-                        },
-                        {
-                            "code": "M008_2",
-                            "status": 404,
-                            "message": "뮤직 비디오를 찾을 수 없습니다."
-                        }
-                    ]
-                }
-            ),
-            409: openapi.Response(
-                description="이미 시청한 기록이 있습니다.",
+                description="뮤직비디오 삭제 실패",
                 examples={
                     "application/json": {
-                        "history_id": 0,
-                        "code": "M008_3",
-                        "status": 409,
-                        "message": "이미 시청한 기록이 있습니다.",
+                        "code": "M004_1",
+                        "status": 404,
+                        "message": "해당 뮤직비디오를 찾을 수 없습니다."
                     }
                 }
             ),
         }
     )
-    def post(self, request, member_id, mv_id):
+    def delete(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            member = Member.objects.get(id=member_id)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "M008_1",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다"
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /history member 404 does not existing')
-            return Response(response_data, status=404)
-
-        try:
-            mv = MusicVideo.objects.get(id=mv_id)
+            music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
-                "code": "M008_2",
+                "code": "M004_1",
                 "status": 404,
-                "message": "뮤직 비디오를 찾을 수 없습니다."
+                "message": "해당 뮤직비디오를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} POST /history music_video 404 does not existing')
+            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
             return Response(response_data, status=404)
+        music_video.is_deleted = True
+        music_video.save()
+        serializer = MusicVideoDeleteSerializer(music_video)
+        response_data = {
+            "code": "M004",
+            "status": 200,
+            "message": "뮤직비디오 삭제 성공",
+            "data": serializer.data
+        }
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
+        return Response(response_data, status=200)
 
-        try:
-            history_test = History.objects.get(member_id=member, mv_id=mv)
-            if history_test:
-                response_data = {
-                    "history_id": history_test.id,
-                    "code": "M008_3",
-                    "status": 409,
-                    "message": "이미 시청한 기록이 있습니다."
-                }
-                logging.warning(f'INFO {client_ip} {current_time} /history 409 conflict')
-                return Response(response_data, status=409)
-        except:
-            pass
-
-        try:
-            histories = History.objects.create(
-                member_id=member,
-                mv_id=mv,
-                current_play_time=0,
-                is_deleted=False
-            )
-            response_data = {
-                "history_id": histories.id,
-                "code": "M008",
-                "status": 201,
-                "message": "시청 기록 추가 성공"
-            }
-            mv.views += 1
-            mv.recently_viewed += 1
-            mv.save()
-            logging.info(f'INFO {client_ip} {current_time} GET /history 201 success')
-            return Response(response_data, status=201)
-
-        except Exception as e:
-            logging.error(f'ERROR {client_ip} {current_time} 500 failed: {str(e)}')
-            response_data = {
-                "code": "M008_4",
-                "status": 500,
-                "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
-
-            }
-            return Response(response_data, status=500)
-
-
-class HistoryUpdateView(APIView):
+class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 갱신",
+        operation_summary="뮤직비디오 시청 기록 갱신 API",
         operation_description="사용자의 뮤직비디오 시청 기록을 갱신합니다.",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -1128,10 +1063,9 @@ class HistoryUpdateView(APIView):
                 f'ERROR {client_ip} {current_time} PATCH /history/{history_id} 500 Internal Server Error')
             return Response(response_data, status=500)
 
-
-class HistoryDetailView(APIView):
+class HistoryDetailView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자의 뮤직비디오 시청 기록 조회",
+        operation_summary="뮤직비디오 시청 기록 조회 API",
         operation_description="사용자의 뮤직비디오 시청 기록을 조회합니다.",
         manual_parameters=[
             openapi.Parameter(
@@ -1179,11 +1113,11 @@ class HistoryDetailView(APIView):
             ),
         }
     )
-    def get(self, request, member_id):
+    def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            member = Member.objects.get(id=member_id)
+            member = Member.objects.filter(username=username).first()
         except Member.DoesNotExist:
             response_data = {
                 "code": "M010_1",
@@ -1194,7 +1128,7 @@ class HistoryDetailView(APIView):
                 f'WARNING {client_ip} {current_time} /history/ 404 Not Found')
             return Response(response_data, status=404)
 
-        member_histories = History.objects.filter(member_id=member).order_by('-updated_at')
+        member_histories = History.objects.filter(username=member).order_by('-updated_at')
         if not member_histories.exists():
             response_data = {
                 "code": "M010_2",
@@ -1233,10 +1167,9 @@ class HistoryDetailView(APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /histories 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
-
-class MusicVideoSearchView(APIView):
+class MusicVideoSearchView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 검색",
+        operation_summary="뮤직비디오 검색 API",
         operation_description="키워드로 뮤직비디오를 검색할 수 있습니다.",
         manual_parameters=[
             openapi.Parameter('mv_name', openapi.IN_QUERY, description="Music video name", type=openapi.TYPE_STRING),
@@ -1355,8 +1288,7 @@ class MusicVideoSearchView(APIView):
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
-
-class MusicVideoStatusView(APIView):
+class MusicVideoStatusView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_description="뮤직비디오 제작 작업의 상태를 확인합니다",
         manual_parameters=[
