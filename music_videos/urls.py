@@ -5,15 +5,13 @@ from . import views
 
 urlpatterns = [
     path('/lyrics', views.CreateLyricsView.as_view(), name='create-lyrics'),
-    path('', views.MusicVideoView.as_view(), name='create-music-video'),
-    path('', views.MusicVideoView.as_view(), name='music-video-detail'),
+    path('', views.MusicVideoView.as_view(), name='music-video'),
     path('/<int:music_video_id>', views.MusicVideoDetailView.as_view(), name='music-video-detail'),
-    path('/<int:music_video_id>', views.MusicVideoDetailView.as_view(), name='delete-music-video'),
     path('/develop', views.MusicVideoDevelopView.as_view(), name='develop-music-video'),
     path('/genres', views.GenreListView.as_view(), name='genres-list'),
     path('/histories/<int:history_id>', views.HistoryUpdateView.as_view(), name='update-history'),
-    path('/histories/<int:member_id>/<int:mv_id>', views.HistoryCreateView.as_view(), name='create-history'),
-    path('/histories-list/<int:member_id>', views.HistoryDetailView.as_view(), name='history-detail'),
+    path('/histories/<str:username>/<int:mv_id>', views.HistoryCreateView.as_view(), name='create-history'),
+    path('/histories-list/<str:username>', views.HistoryDetailView.as_view(), name='history-detail'),
     path('/instruments', views.InstrumentListView.as_view(), name='instruments-list'),
     path('/lyrics', views.CreateLyricsView.as_view(), name='create_lyrics'),
     path('/searches', views.MusicVideoSearchView.as_view(), name='music-video-search'),
