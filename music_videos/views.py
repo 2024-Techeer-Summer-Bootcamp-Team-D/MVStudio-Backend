@@ -617,11 +617,11 @@ class MusicVideoDeleteView(ApiAuthMixin, APIView):
             ),
         }
     )
-    def delete(self, request, music_video_id):
+    def delete(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
+            music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M004_1",
@@ -639,7 +639,7 @@ class MusicVideoDeleteView(ApiAuthMixin, APIView):
             "message": "뮤직비디오 삭제 성공",
             "data": serializer.data
         }
-        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
         return Response(response_data, status=200)
 
 class GenreListView(ApiAuthMixin, APIView):
@@ -906,11 +906,11 @@ class MusicVideoDetailView(ApiAuthMixin, APIView):
             )
         }
     )
-    def get(self, request, music_video_id):
+    def get(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
+            music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M003_1",
@@ -962,11 +962,11 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             ),
         }
     )
-    def delete(self, request, music_video_id):
+    def delete(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
+            music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
                 "code": "M004_1",
@@ -984,7 +984,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             "message": "뮤직비디오 삭제 성공",
             "data": serializer.data
         }
-        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
         return Response(response_data, status=200)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
