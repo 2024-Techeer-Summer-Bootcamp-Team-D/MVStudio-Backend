@@ -95,10 +95,11 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
     genres = serializers.SerializerMethodField()
     instruments = serializers.SerializerMethodField()
     style_name = serializers.SerializerMethodField()
+    profile_image = serializers.SerializerMethodField()
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'subject', 'cover_image', 'member_name', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
+            'id', 'subject', 'cover_image', 'member_name', 'profile_image', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
         ]
 
     def get_member_name(self, obj):
@@ -112,6 +113,9 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
         if obj.instrument_id.exists():
             return [instrument.name for instrument in obj.instrument_id.all()]
         return []
+
+    def get_profile_image(self, obj):
+        return obj.member_id.profile_image
 
 class HistorySerializer(serializers.ModelSerializer):
     class Meta:

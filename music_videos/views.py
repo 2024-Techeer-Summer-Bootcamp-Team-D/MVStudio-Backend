@@ -85,33 +85,68 @@ class CreateLyricsView(ApiAuthMixin, APIView):
             prompt = (
                 f"Create song lyrics based on the keyword '{subject}'. "
                 f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
-                f"The song should have 4 verses, each with 4 lines, formatted as follows:\n\n"
-                f"[Verse]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Verse 2]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Bridge]\nLine 1\nLine 2\nLine 3\nLine 4\n\n"
-                f"[Verse 3]\nLine 1\nLine 2\nLine 3\nLine 4\n"
+                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and At least 2 sentences per line(very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
+                f"---(Original Lyrics)---<br /><br />"
+                f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[End]<br /><br />"
+                
+                f"---(English Translation)---<br /><br />"
+                f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
+                f"[End]<br /><br />"
             )
 
             openai.api_key = settings.OPENAI_API_KEY
             response = openai.chat.completions.create(
-                model = "gpt-3.5-turbo",
-                # model="text-davinci-003",
+                model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant that writes song lyrics."},
+                    {"role": "system",
+                     "content": "You are a helpful assistant that writes song lyrics and provides translations."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=300,
+                max_tokens=1000,
                 n=3
             )
-            lyrics1 = response.choices[0].message.content
-            lyrics2 = response.choices[1].message.content
-            lyrics3 = response.choices[2].message.content
+
+            # 가사 추출
+            def extract_lyrics(content):
+                def extract_part(text, start_marker, end_marker):
+                    start_idx = text.find(start_marker)
+                    if start_idx == -1:
+                        return ""
+                    start_idx += len(start_marker)
+                    end_idx = text.find(end_marker, start_idx)
+                    if end_idx == -1:
+                        # end_marker가 없는 경우, 텍스트 끝에 end_marker를 추가
+                        text += end_marker
+                        end_idx = text.find(end_marker, start_idx)
+                    end_idx += len(end_marker)
+                    return text[start_idx:end_idx]
+
+                original_lyrics = extract_part(content, "---(Original Lyrics)---<br /><br />", "[End]<br /><br />")
+                translation_lyrics = extract_part(content, "---(English Translation)---<br /><br />",
+                                                  "[End]<br /><br />")
+                return original_lyrics, translation_lyrics
+
+            # print(f"0번째 가사 : {response.choices[0].message.content}")
+            # print(f"1번째 가사 : {response.choices[1].message.content}")
+            # print(f"2번째 가사 : {response.choices[2].message.content}")
+
+            lyrics1_ori, lyrics1_eng = extract_lyrics(response.choices[0].message.content)
+            lyrics2_ori, lyrics2_eng = extract_lyrics(response.choices[1].message.content)
+            lyrics3_ori, lyrics3_eng = extract_lyrics(response.choices[2].message.content)
 
             response_data = {
-                "lyrics": {
-                    "lyrics1": lyrics1,
-                    "lyrics2": lyrics2,
-                    "lyrics3": lyrics3,
+                "lyrics_ori": {
+                    "lyrics1": lyrics1_ori,
+                    "lyrics2": lyrics2_ori,
+                    "lyrics3": lyrics3_ori,
+                },
+                "lyrics_eng": {
+                    "lyrics1": lyrics1_eng,
+                    "lyrics2": lyrics2_eng,
+                    "lyrics3": lyrics3_eng,
                 },
                 "code": "M007",
                 "status": 201,
@@ -285,6 +320,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                             "subject": "string",
                             "cover_image": "string",
                             "member_name": "string",
+                            "profile_image": "string",
                             "length": 0,
                             "views": 0,
                             "genres": [
@@ -305,7 +341,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                             }
                         ],
                         "code": "M001",
-                        "HTTPstatus": 200,
+                        "status": 200,
                         "message": "뮤직비디오 목록 조회 성공",
                         "pagination": {
                             "current_page": 1,
@@ -658,7 +694,7 @@ class GenreListView(ApiAuthMixin, APIView):
             genres = Genre.objects.all()
             serializer = GenreSerializer(genres, many=True)
             response_data = {
-                "data": [
+                "genres": [
                     {
                         "genre_id": item["id"],
                         "genre_name": item["name"],
@@ -896,117 +932,60 @@ class MusicVideoDetailView(ApiAuthMixin, APIView):
 
 class HistoryCreateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 시청 기록 등록 API",
-        operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 등록합니다.",
+        operation_summary="뮤직비디오 삭제",
+        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
         responses={
-            201: openapi.Response(
-                description="사용자의 뮤직비디오 시청 기록 등록 성공",
+            200: openapi.Response(
+                description="뮤직비디오 삭제 성공",
                 examples={
                     "application/json": {
-                        "history_id": 0,
-                        "code": "M008",
-                        "status": 201,
-                        "message": "사용자의 뮤직비디오 시청 기록 등록 성공",
+                        "code": "M004",
+                        "status": 200,
+                        "message": "뮤직비디오 삭제 성공",
+                        "data": {
+                            "member_id": "member_id",
+                            "subject": "subject",
+                            "is_deleted": "1",
+                        }
                     }
                 }
             ),
             404: openapi.Response(
-                description="잘못된 요청",
-                examples={
-                    "application/json": [
-                        {
-                            "code": "M008_1",
-                            "status": 404,
-                            "message": "회원 정보를 찾을 수 없습니다."
-                        },
-                        {
-                            "code": "M008_2",
-                            "status": 404,
-                            "message": "뮤직 비디오를 찾을 수 없습니다."
-                        }
-                    ]
-                }
-            ),
-            409: openapi.Response(
-                description="이미 시청한 기록이 있습니다.",
+                description="뮤직비디오 삭제 실패",
                 examples={
                     "application/json": {
-                        "history_id": 0,
-                        "code": "M008_3",
-                        "status": 409,
-                        "message": "이미 시청한 기록이 있습니다.",
+                        "code": "M004_1",
+                        "status": 404,
+                        "message": "해당 뮤직비디오를 찾을 수 없습니다."
                     }
                 }
             ),
         }
     )
-    def post(self, request, username, mv_id):
+    def delete(self, request, music_video_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            member = Member.objects.filter(username=username).first()
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "M008_1",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다"
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /history member 404 does not existing')
-            return Response(response_data, status=404)
-
-        try:
-            mv = MusicVideo.objects.get(id=mv_id)
+            music_video = MusicVideo.objects.get(id=music_video_id)
         except MusicVideo.DoesNotExist:
             response_data = {
-                "code": "M008_2",
+                "code": "M004_1",
                 "status": 404,
-                "message": "뮤직 비디오를 찾을 수 없습니다."
+                "message": "해당 뮤직비디오를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} POST /history music_video 404 does not existing')
+            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
             return Response(response_data, status=404)
-
-        try:
-            history_test = History.objects.get(username=member, mv_id=mv)
-            if history_test:
-                response_data = {
-                    "history_id": history_test.id,
-                    "code": "M008_3",
-                    "status": 409,
-                    "message": "이미 시청한 기록이 있습니다."
-                }
-                logging.warning(f'INFO {client_ip} {current_time} /history 409 conflict')
-                return Response(response_data, status=409)
-        except:
-            pass
-
-        try:
-            histories = History.objects.create(
-                username=member,
-                mv_id=mv,
-                current_play_time=0,
-                is_deleted=False
-            )
-            response_data = {
-                "history_id": histories.id,
-                "code": "M008",
-                "status": 201,
-                "message": "시청 기록 추가 성공"
-            }
-            mv.views += 1
-            mv.recently_viewed += 1
-            mv.save()
-            logging.info(f'INFO {client_ip} {current_time} GET /history 201 success')
-            return Response(response_data, status=201)
-
-        except Exception as e:
-            logging.error(f'ERROR {client_ip} {current_time} 500 failed: {str(e)}')
-            response_data = {
-                "code": "M008_4",
-                "status": 500,
-                "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
-
-            }
-            return Response(response_data, status=500)
+        music_video.is_deleted = True
+        music_video.save()
+        serializer = MusicVideoDeleteSerializer(music_video)
+        response_data = {
+            "code": "M004",
+            "status": 200,
+            "message": "뮤직비디오 삭제 성공",
+            "data": serializer.data
+        }
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
+        return Response(response_data, status=200)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
