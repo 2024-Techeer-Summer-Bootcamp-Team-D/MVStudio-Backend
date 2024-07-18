@@ -321,6 +321,7 @@ class MusicVideoView(APIView):
                             "subject": "string",
                             "cover_image": "string",
                             "member_name": "string",
+                            "profile_image": "string",
                             "length": 0,
                             "views": 0,
                             "genres": [
@@ -341,7 +342,7 @@ class MusicVideoView(APIView):
                             }
                         ],
                         "code": "M001",
-                        "HTTPstatus": 200,
+                        "status": 200,
                         "message": "뮤직비디오 목록 조회 성공",
                         "pagination": {
                             "current_page": 1,
@@ -585,65 +586,6 @@ class MusicVideoDevelopView(APIView):
                 "status": 500,
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class MusicVideoDeleteView(APIView):
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 삭제",
-        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 삭제 성공",
-                examples={
-                    "application/json": {
-                        "code": "M004",
-                        "status": 200,
-                        "message": "뮤직비디오 삭제 성공",
-                        "data": {
-                            "member_id": "member_id",
-                            "subject": "subject",
-                            "is_deleted": "1",
-                        }
-                    }
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 삭제 실패",
-                examples={
-                    "application/json": {
-                        "code": "M004_1",
-                        "status": 404,
-                        "message": "해당 뮤직비디오를 찾을 수 없습니다."
-                    }
-                }
-            ),
-        }
-    )
-    def delete(self, request, music_video_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            music_video = MusicVideo.objects.get(id=music_video_id)
-        except MusicVideo.DoesNotExist:
-            response_data = {
-                "code": "M004_1",
-                "status": 404,
-                "message": "해당 뮤직비디오를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
-            return Response(response_data, status=404)
-        music_video.is_deleted = True
-        music_video.save()
-        serializer = MusicVideoDeleteSerializer(music_video)
-        response_data = {
-            "code": "M004",
-            "status": 200,
-            "message": "뮤직비디오 삭제 성공",
-            "data": serializer.data
-        }
-        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
-        return Response(response_data, status=200)
-
 
 class GenreListView(APIView):
     @swagger_auto_schema(
@@ -934,6 +876,62 @@ class MusicVideoDetailView(APIView):
             "message": "뮤직비디오 상세 정보 조회 성공"
         }
         logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
+        return Response(response_data, status=200)
+
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 삭제",
+        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 삭제 성공",
+                examples={
+                    "application/json": {
+                        "code": "M004",
+                        "status": 200,
+                        "message": "뮤직비디오 삭제 성공",
+                        "data": {
+                            "member_id": "member_id",
+                            "subject": "subject",
+                            "is_deleted": "1",
+                        }
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 삭제 실패",
+                examples={
+                    "application/json": {
+                        "code": "M004_1",
+                        "status": 404,
+                        "message": "해당 뮤직비디오를 찾을 수 없습니다."
+                    }
+                }
+            ),
+        }
+    )
+    def delete(self, request, music_video_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            music_video = MusicVideo.objects.get(id=music_video_id)
+        except MusicVideo.DoesNotExist:
+            response_data = {
+                "code": "M004_1",
+                "status": 404,
+                "message": "해당 뮤직비디오를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
+            return Response(response_data, status=404)
+        music_video.is_deleted = True
+        music_video.save()
+        serializer = MusicVideoDeleteSerializer(music_video)
+        response_data = {
+            "code": "M004",
+            "status": 200,
+            "message": "뮤직비디오 삭제 성공",
+            "data": serializer.data
+        }
+        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{music_video_id} 200 delete success')
         return Response(response_data, status=200)
 
 
