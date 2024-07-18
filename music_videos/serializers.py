@@ -36,7 +36,7 @@ class MusicVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'member_id', 'subject', 'language', 'vocal', 'length',
+            'id', 'username', 'subject', 'language', 'vocal', 'length',
             'cover_image', 'mv_file', 'views', 'created_at', 'updated_at', 'is_deleted',
             'genres', 'genres_ids', 'instruments', 'instruments_ids', 'style', 'style_id', 'tempo', 'lyrics'
         ]
@@ -86,7 +86,7 @@ class MusicVideoDeleteSerializer(serializers.ModelSerializer):
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'member_id', 'subject', 'is_deleted'
+            'id', 'username', 'subject', 'is_deleted'
         ]
 
 
@@ -103,7 +103,7 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_member_name(self, obj):
-        return obj.member_id.nickname
+        return obj.username.nickname
     def get_style_name(self, obj):
         return obj.style_id.name
     def get_genres(self, obj):

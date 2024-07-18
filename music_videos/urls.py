@@ -4,7 +4,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.MusicVideoView.as_view(), name='create_music_video'),
+    path('/lyrics', views.CreateLyricsView.as_view(), name='create-lyrics'),
+    path('', views.MusicVideoView.as_view(), name='create-music-video'),
     path('', views.MusicVideoView.as_view(), name='music-video-detail'),
     path('/<int:music_video_id>', views.MusicVideoDetailView.as_view(), name='music-video-detail'),
     path('/<int:music_video_id>', views.MusicVideoDetailView.as_view(), name='delete-music-video'),

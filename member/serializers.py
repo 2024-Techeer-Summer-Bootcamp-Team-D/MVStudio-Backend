@@ -1,54 +1,88 @@
 # member/serializers.py
 
 from rest_framework import serializers
-from django.db import IntegrityError
 from .models import Member, Country
-from django.db import IntegrityError
+from django.utils.translation import gettext_lazy as _
+from django.contrib.auth import get_user_model
 
-class MemberSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Member
-        fields = ['id', 'login_id', 'nickname', 'password', 'birthday', 'sex', 'country']
-        extra_kwargs = {
-            'password': {'write_only': True}
+User = get_user_model()
+
+
+def validate_password12(password1, password2):
+
+    if not password1 or not password2:
+        raise serializers.ValidationError(
+            _("need two password fields")
+        )
+    if password1 != password2:
+        raise serializers.ValidationError(
+            _("password fields didn't match!"))
+
+    return password1
+
+
+class RegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150, write_only=True)
+    email = serializers.EmailField(write_only=True)
+    password1 = serializers.CharField(write_only=True)
+    password2 = serializers.CharField(write_only=True)
+
+    def validate_email(self, email):
+        if not email:
+            raise serializers.ValidationError(
+                _("email field not allowed empty")
+            )
+        used = User.objects.filter(email__iexact=email)
+        if used.count() > 0:
+            raise serializers.ValidationError(
+                _("A user is already registered with this e-mail address."))
+
+        return email
+
+    def validate_username(self, username):
+
+        if not username:
+            raise serializers.ValidationError(
+                _("username field not allowed empty")
+            )
+
+        used = User.objects.filter(username__iexact=username).first()
+        if used:
+            raise serializers.ValidationError(
+                _("A user is already registered with this username."))
+
+        return username
+
+    def validate(self, data):
+        data['password1'] = validate_password12(data['password1'], data['password2'])
+        data['email'] = self.validate_email(data['email'])
+        data['username'] = self.validate_username(data['username'])
+        print("check validate ALL")
+
+        return data
+
+    def get_cleaned_data(self):
+        return {
+            'username': self.validated_data.get('username', ''),
+            'password1': self.validated_data.get('password1', ''),
+            'email': self.validated_data.get('email', '')
         }
 
     def create(self, validated_data):
-        try:
-            member = Member.objects.create(
-                login_id=validated_data['login_id'],
-                nickname=validated_data['nickname'],
-                password=validated_data['password'],
-                birthday=validated_data['birthday'],
-                sex=validated_data['sex'],
-                country=validated_data['country'],
-            )
-            return member
-        except IntegrityError as e:
-            existing_member = Member.objects.get(login_id=validated_data['login_id'])
-            return existing_member
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password1"]
+        )
+
+        return user
 
 class MemberDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
-        fields = ['login_id', 'nickname', 'profile_image', 'comment', 'country', 'birthday', 'youtube_account', 'instagram_account']
+        fields = ['username', 'email', 'name', 'nickname', 'profile_image', 'comment', 'country', 'birthday', 'sex', 'youtube_account', 'instagram_account']
+        read_only_fields = ['username']
 
-
-class MemberLoginSerializer(serializers.Serializer):
-    login_id = serializers.CharField(max_length=100)
-    password = serializers.CharField(max_length=100)
-
-    def validate(self, data):
-        login_id = data.get('login_id')
-        password = data.get('password')
-
-        if not Member.objects.filter(login_id=login_id).exists():
-            raise serializers.ValidationError("로그인 실패: 해당 로그인 ID가 존재하지 않습니다.")
-
-        if not Member.objects.filter(login_id=login_id, password=password).exists():
-            raise serializers.ValidationError("로그인 실패: 로그인 ID 또는 비밀번호가 잘못되었습니다.")
-
-        return data
 
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:

@@ -101,11 +101,10 @@ TEMPLATES = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'oauth.authenticate.SafeJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
@@ -118,6 +117,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+# RDS MySQL 사용 Prod
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -131,6 +131,18 @@ DATABASES = {
         },
     }
 }
+# 도커에서 DB 사용 Dev
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': env('MYSQL_DATABASE'),
+#         'USER': env('MYSQL_USER'),
+#         'PASSWORD': env('MYSQL_PASSWORD'),
+#         'HOST': 'db',
+#         'PORT': '3306',
+#     }
+# }
+
 
 # Elasticsearch settings
 ELASTICSEARCH_DSL = {
@@ -149,6 +161,27 @@ ELASTICSEARCH_DSL = {
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'social_core.pipeline.user.get_username',
+    'social_core.pipeline.user.create_user',
+    'member.pipeline.save_profile_picture',  # 사용자 정보를 저장하는 커스텀 파이프라인 함수
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'social_core.pipeline.user.user_details',
+)
+
+AUTH_USER_MODEL = 'member.Member'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -187,7 +220,25 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'BearerAuth': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': "JWT Token"
+        }
+    },
+    'SECURITY_REQUIREMENTS': [{
+        'BearerAuth': []
+    }]
+}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+BASE_BACKEND_URL =  env('BASE_BACKEND_URL')
+BASE_FRONTEND_URL = env('BASE_FRONTEND_URL')
 
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
@@ -200,12 +251,10 @@ OPENAI_API_KEY = env('OPENAI_API_KEY')
 SUNO_API_KEY = env('SUNO_API_KEY')
 RUNWAYML_API_KEY = env('RUNWAYML_API_KEY')
 
-
-
-
 # OAuth 2.0
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
+REFRESH_TOKEN_SECRET = env('REFRESH_TOKEN_SECRET')
 
 # Django 세션 설정
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
@@ -216,7 +265,6 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
 # Celery 설정
-
 CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672//'
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_TIMEZONE = 'Asia/Seoul'

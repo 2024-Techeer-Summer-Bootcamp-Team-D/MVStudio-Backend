@@ -1,19 +1,24 @@
-# views.py
-import boto3
-from django.conf import settings
-
-from rest_framework import status, serializers
-from rest_framework.views import APIView
+from rest_framework import serializers, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 
-from .models import Member, Country
-from .serializers import MemberSerializer, MemberDetailSerializer, MemberLoginSerializer, CountrySerializer
-
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
+from django.utils.translation import gettext_lazy as _
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
+from oauth.authenticate import generate_access_token, jwt_login
+from oauth.mixins import ApiAuthMixin, PublicApiMixin
+
+from .models import Member, Country
+from music_videos.s3_utils import upload_file_to_s3
+from .serializers import MemberDetailSerializer, CountrySerializer, RegisterSerializer
+
+import jwt
 from datetime import datetime
 import logging
 import os
@@ -21,162 +26,121 @@ import sys
 
 # 현재 파일의 경로를 가져옵니다
 current_dir = os.path.dirname(os.path.abspath(__file__))
-
 # 상위 폴더의 경로를 구합니다
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-
 # 상위 폴더의 경로를 sys.path에 추가합니다
 sys.path.insert(0, parent_dir)
 
-from music_videos.s3_utils import upload_file_to_s3
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
-
-class MemberSignUpView(APIView):
+class UserCreateApi(PublicApiMixin, APIView):
     @swagger_auto_schema(
         operation_summary="회원가입 API",
-        operation_description="이 API는 신규 사용자를 등록하는 데 사용됩니다.",
-        request_body=MemberSerializer,
+        operation_description="Create a new user",
+        request_body=RegisterSerializer,
         responses={
-            201: openapi.Response(
-                description="회원가입 완료",
-                examples={
-                    "application/json": {
-                        "id" : 0,
-                        "username": "string",
-                        "code": "A001",
-                        "status": 201,
-                        "message": "회원가입 완료"
-                    }
-                }
-            ),
-            400: openapi.Response(
-                description="잘못된 요청",
-                examples={
-                    "application/json": [
-                        {
-                            "code": "A001_1",
-                            "status": 400,
-                            "message": "유효하지 않은 country ID입니다."
-                        },
-                        {
-                            "code": "A001_2",
-                            "status": 400,
-                            "message": "유효하지 않은 데이터입니다."
-                        }
-                    ]
-                }
-            ),
-            409: openapi.Response(
-                description="회원가입 실패",
-                examples={
-                    "application/json": {
-                        "code": "A001_3",
-                        "status": 409,
-                        "message": "이미 존재하는 로그인 ID입니다."
-                    }
-                }
-            ),
+            200: "User created successfully",
+            409: "Request Body Error"
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        """
+        회원가입 api
+
+        """
+        serializer = RegisterSerializer(data=request.data)
+        if not serializer.is_valid(raise_exception=True):
+            return Response({
+                "message": "Request Body Error"
+            }, status=status.HTTP_409_CONFLICT)
+
+        user = serializer.save()
+
+        response = Response(status=status.HTTP_200_OK)
+        response = jwt_login(response=response, user=user)
+        return response
+
+
+class LoginApi(PublicApiMixin, APIView):
+    @swagger_auto_schema(
+        operation_summary="로그인 API",
+        operation_description="Log in with username and password",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Password')
+            },
+            required=['username', 'password']
+        ),
+        responses={
+            200: "Login successful",
+            400: "username/password required or wrong password",
+            404: "User not found"
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        """
+        username 과 password를 가지고 login 시도
+        key값 : username, password
+        """
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        if (username is None) or (password is None):
+            return Response({
+                "message": "username/password required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(username=username).first()
+        if user is None:
+            return Response({
+                "message": "유저를 찾을 수 없습니다"
+            }, status=status.HTTP_404_NOT_FOUND)
+        if not user.check_password(password):
+            return Response({
+                "message": "wrong password"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        response = Response(status=status.HTTP_200_OK)
+        return jwt_login(response, user)
+
+class LogoutApi(PublicApiMixin, APIView):
+    @swagger_auto_schema(
+        operation_summary="로그아웃 API",
+        operation_description="Log out and delete refresh token cookie",
+        responses={
+            202: "Logout success"
         }
     )
     def post(self, request):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        login_id = request.data.get('login_id')
-        country_id = request.data.get('country')
-        if not Country.objects.filter(id=country_id).exists():
-            response_data = {
-                "code": "A001_1",
-                "status": 400,
-                "message": "유효하지 않은 country ID입니다."
-            }
-            logger.warning(f'WARNING {client_ip} {current_time} POST /members 400 invalid country id')
-            return Response(response_data, status=400)
-        
-        # 중복된 login_id 확인
-        if Member.objects.filter(login_id=login_id).exists():
-            existing_member = Member.objects.get(login_id=login_id)
-            response_data = {
-                "code": "A001_3",
-                "status": 409,
-                "message": "이미 존재하는 로그인 ID입니다.",
-            }
-            logger.warning(f'WARNING {client_ip} {current_time} POST /members 409 already existing')
-            return Response(response_data, status=200)
+        """
+        클라이언트 refreshtoken 쿠키를 삭제함으로 로그아웃처리
+        """
+        response = Response({
+            "message": "Logout success"
+        }, status=status.HTTP_202_ACCEPTED)
+        response.delete_cookie('refreshtoken')
 
+        return response
 
-        serializer = MemberSerializer(data=request.data)
-        if serializer.is_valid():
-            member = serializer.save()
-            response_data = {
-                "id": member.id,
-                "username": member.nickname,
-                "code": "A001",
-                "status": 201,
-                "message": "회원가입 완료"
-            }
-            logger.info(f'INFO {client_ip} {current_time} POST /members 201 signup success')
-            return Response(response_data, status=201)
-        else:
-            response_data = {
-                "code": "A001_2",
-                "status": 400,
-                "message": "유효하지 않은 데이터입니다."
-            }
-        logger.warning(f'WARNING {client_ip} {current_time} POST /members 400 signup failed')
-        return Response(response_data, status=400)
-
-
-class MemberDetailView(APIView):
+class MemberDetailView(ApiAuthMixin, APIView):
     parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
         operation_summary="회원 정보 조회 API",
-        operation_description="이 API는 특정 회원의 정보를 조회하는 데 사용됩니다.",
+        operation_description="Retrieve member details by username",
         responses={
-            200: openapi.Response(
-                description="회원 정보 조회 성공",
-                examples={
-                    "application/json": {
-                        "code": "P001",
-                        "status": 200,
-                        "message": "회원 정보 조회 성공",
-                        "data": {
-                            "login_id": "string",
-                            "nickname": "string",
-                            "sex": "string",
-                            "comment": "string",
-                            "country": "string",
-                            "birthday": "string",
-                            "profile_image": "string",
-                            "youtube_account": "string",
-                            "instagram_account": "string",
-                            "code": "P001",
-                            "HTTPstatus": 200,
-                            "message": "회원 정보 조회 성공"
-                        }
-                    }
-                }
-            ),
-            404: openapi.Response(
-                description="회원 정보 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "P001_1",
-                        "status": 404,
-                        "message": "회원 정보가 없습니다."
-                    }
-                }
-            ),
+            200: MemberDetailSerializer,
+            404: "회원 정보가 없습니다."
         }
     )
-
-    def get(self, request, member_id):
+    def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            member = Member.objects.get(id=member_id)
+            member = User.objects.filter(username=username).first()
         except Member.DoesNotExist:
             response_data = {
                 "code": "P001_1",
@@ -185,128 +149,30 @@ class MemberDetailView(APIView):
             }
             logger.warning(f'WARNING {client_ip} {current_time} GET /members 404 does not existing')
             return Response(response_data, status=404)
-
         serializer = MemberDetailSerializer(member)
         response_data = {
+            "data": serializer.data,
             "code": "P001",
             "status": 200,
             "message": "회원 정보 조회 성공"
         }
         logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
-        return Response(serializer.data, status=200)
-
+        return Response(response_data, status=200)
     @swagger_auto_schema(
         operation_summary="회원 정보 수정 API",
-        operation_description="이 API는 특정 회원의 정보를 수정하는 데 사용됩니다.",
-
-    manual_parameters=[
-            openapi.Parameter(
-                'nickname',
-                openapi.IN_FORM,
-                description="Nickname",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'profile_image',
-                openapi.IN_FORM,
-                description="Profile image file",
-                type=openapi.TYPE_FILE,
-                required=False
-            ),
-            openapi.Parameter(
-                'sex',
-                openapi.IN_FORM,
-                description="Sex",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'comment',
-                openapi.IN_FORM,
-                description="Comment",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'country',
-                openapi.IN_FORM,
-                description="Country",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'birthday',
-                openapi.IN_FORM,
-                description="Birthday",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'youtube_account',
-                openapi.IN_FORM,
-                description="YouTube account",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-            openapi.Parameter(
-                'instagram_account',
-                openapi.IN_FORM,
-                description="Instagram account",
-                type=openapi.TYPE_STRING,
-                required=False
-            ),
-
-        ],
+        operation_description="Update member details by username",
+        request_body=MemberDetailSerializer,
         responses={
-            200: openapi.Response(
-                description="회원 정보 수정 성공",
-                examples={
-                    "application/json": {
-                        "code": "P002",
-                        "status": 200,
-                        "message": "회원 정보 수정 성공"
-                    }
-                }
-            ),
-            404: openapi.Response(
-                description="회원 정보가 없습니다.",
-                examples={
-                    "application/json": {
-                        "code": "P002_2",
-                        "status": 404,
-                        "message": "회원 정보가 없습니다."
-                    }
-                }
-            ),
-            400: openapi.Response(
-                description="유효하지 않은 데이터입니다.",
-                examples={
-                    "application/json": {
-                        "code": "P002_1",
-                        "status": 400,
-                        "message": "유효하지 않은 데이터입니다."
-                    }
-                }
-            ),
-            500: openapi.Response(
-                description="s3 이미지 업로드 실패",
-                examples={
-                    "application/json": {
-                        "code": "P002_3",
-                        "status": 500,
-                        "message": "s3 이미지 업로드 실패"
-                    }
-                }
-            ),
+            200: "회원 정보 수정 완료",
+            404: "회원 정보가 없습니다.",
+            500: "s3 이미지 업로드 실패."
         }
     )
-
-    def patch(self, request, member_id):
+    def patch(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            member = Member.objects.get(id=member_id)
+            member = User.objects.filter(username=username).first()
         except Member.DoesNotExist:
             response_data = {
                 "code": "P002_2",
@@ -322,9 +188,9 @@ class MemberDetailView(APIView):
         if image_file:
             content_type = image_file.content_type
 
-            # 파일 이름을 member_id로 구별
+            # 파일 이름을 username로 구별
             file_extension = os.path.splitext(image_file.name)[1]  # 파일 확장자 추출
-            s3_key = f"profiles/{member_id}{file_extension}"
+            s3_key = f"profiles/{username}{file_extension}"
             image_url = upload_file_to_s3(image_file, s3_key, ExtraArgs={
                 "ContentType": content_type,
             })
@@ -341,75 +207,55 @@ class MemberDetailView(APIView):
             data['profile_image'] = image_url
         else:
             data['profile_image'] = member.profile_image
+        print(data)
         serializer = MemberDetailSerializer(instance=member, data=data, partial=True)
-
+        print(0)
         if serializer.is_valid():
+            print(1)
             serializer.save()
+            print(2)
             response_data = {
                 "code": "P002",
                 "status": 200,
                 "message": "회원 정보 수정 완료"
             }
-            logger.info(f'INFO {client_ip} {current_time} PATCH /members/{member_id} 200 update success')
+            logger.info(f'INFO {client_ip} {current_time} PATCH /members/{username} 200 update success')
             return Response(response_data, status=200)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class MemberLoginView(APIView):
     @swagger_auto_schema(
-        operation_summary="로그인 API",
-        operation_description="이 API는 사용자 로그인을 처리하는 데 사용됩니다.",
-        request_body=MemberLoginSerializer,
+        operation_summary="회원 탈퇴 API",
+        operation_description="Delete the current logged-in user",
         responses={
-            201: openapi.Response(
-                description="로그인 성공",
-                examples={
-                    "application/json": {
-                        "id": 0,
-                        "username": "string",
-                        "code": "A002",
-                        "status": 201,
-                        "message": "로그인 성공"
-                    }
-                }
-            ),
-            400: openapi.Response(
-                description="로그인 실패",
-                examples={
-                    "application/json": {
-                        "code": "A002_1",
-                        "status": 400,
-                        "message": "로그인 실패"
-                    }
-                }
-            ),
+            204: "Delete user success",
+            400: "passwords do not match"
         }
     )
-    def post(self, request):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        serializer = MemberLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            member = Member.objects.get(login_id=serializer.validated_data['login_id'])
-            response_data = {
-                "id": member.id,
-                "username": member.nickname,
-                "code": "A002",
-                "status": 201,
-                "message": "로그인 성공"
-            }
-            logger.info(f'INFO {client_ip} {current_time} POST /members/login 201 login success')
-            return Response(response_data, status=201)
-        response_data = {
-            "code": "A002_1",
-            "status": 400,
-            "message": "로그인 실패"
-        }
-        logger.warning(f'WARNING {client_ip} {current_time} POST /members/login 400 login failed')
-        return Response(response_data, status=400)
+    def delete(self, request, *args, **kwargs):
+        """
+        현재 로그인 된 유저 삭제
+        소셜 로그인 유저는 바로 삭제.
+        일반 회원가입 유저는 비밀번호 입력 후 삭제.
+        """
+        user = request.user
+        signup_path = user.profile.signup_path
 
+        if signup_path == "kakao" or signup_path == "google":
+            user.delete()
+            return Response({
+                "message": "Delete user success"
+            }, status=status.HTTP_204_NO_CONTENT)
 
-class CountryListView(APIView):
+        if not check_password(request.data.get("password"), user.password):
+            raise serializers.ValidationError(
+                _("passwords do not match")
+            )
+
+        user.delete()
+
+        return Response({
+            "message": "Delete user success"
+        }, status=status.HTTP_204_NO_CONTENT)
+class CountryListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="국가 리스트 조회 API",
         operation_description="이 API는 사용자의 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",
@@ -464,3 +310,57 @@ class CountryListView(APIView):
             }
             logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 500 failed')
             return Response(response_data, status=500)
+
+
+class RefreshJWTtoken(APIView):
+    @swagger_auto_schema(
+        operation_summary="Access Token 재발급 API",
+        operation_description="Refresh JWT token",
+        responses={
+            200: openapi.Response(
+                description="New access token",
+                examples={
+                    'application/json': {
+                        'access_token': 'new_access_token'
+                    }
+                }
+            ),
+            403: "Authentication credentials were not provided or expired refresh token",
+            400: "User not found or inactive"
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refreshtoken')
+
+        if refresh_token is None:
+            return Response({
+                "message": "Authentication credentials were not provided."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            payload = jwt.decode(
+                refresh_token, settings.REFRESH_TOKEN_SECRET, algorithms=['HS256']
+            )
+        except:
+            return Response({
+                "message": "expired refresh token, please login again."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        user = User.objects.filter(id=payload['user_id']).first()
+
+        if user is None:
+            return Response({
+                "message": "user not found"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        if not user.is_active:
+            return Response({
+                "message": "user is inactive"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        access_token = generate_access_token(user)
+
+        return Response(
+            {
+                'access_token': access_token,
+            }
+        )
