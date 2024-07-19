@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/v1", include([
         path("/music-videos", include('music_videos.urls')),
         path("/members", include('member.urls')),
+        path("/charts", include('charts.urls')),
         path("/oauth", include('oauth.urls')),
     ])),
 

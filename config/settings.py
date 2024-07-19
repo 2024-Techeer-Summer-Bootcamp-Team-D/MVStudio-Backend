@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "music_videos",
     "member",
+    "charts",
     "storages",
     "social_django",
     "oauth",
