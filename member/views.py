@@ -374,11 +374,11 @@ class RefreshJWTtoken(APIView):
 
 class MemberDailyGraphView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="사용자 채널 일별 조회수 통계 조회 API",
-        operation_description="사용자의 채널을 일별 조회수를 통계로 분석할 수 있습니다.",
+        operation_summary="사용자 채널 날짜별 조회수 통계 조회 API",
+        operation_description="사용자의 채널을 날짜별 조회수를 통계로 분석할 수 있습니다.",
         responses={
             200: openapi.Response(
-                description="사용자 채널 일별 조회수 통계 조회 성공",
+                description="사용자 채널 날짜별 조회수 통계 조회 성공",
                 examples={
                     "application/json": [
                         {
@@ -410,7 +410,7 @@ class MemberDailyGraphView(ApiAuthMixin, APIView):
                         {
                         "code": "G001",
                         "status": 200,
-                        "message": "사용자 채널 일별 조회수 통계 조회 성공",
+                        "message": "사용자 채널 날짜별 조회수 통계 조회 성공",
                         "data": {
                             "member_name": "string",
                             "total_mv": 0,
@@ -437,7 +437,7 @@ class MemberDailyGraphView(ApiAuthMixin, APIView):
                 }
             ),
             404: openapi.Response(
-                description="사용자 채널 일별 조회수 통계 조회 실패",
+                description="사용자 채널 날짜별 조회수 통계 조회 실패",
                 examples={
                     "application/json": {
                         "code": "G001_2",
@@ -515,7 +515,7 @@ class MemberDailyGraphView(ApiAuthMixin, APIView):
         response_data = {
             "code": "G001",
             "status": 200,
-            "message": "사용자 채널 일별 조회수 통계 조회 성공",
+            "message": "사용자 채널 날짜별 조회수 통계 조회 성공",
             "member_name": member_name,
             "total_mv": total_mv,
             "total_views": total_views,

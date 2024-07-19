@@ -229,7 +229,6 @@ class MusicVideoView(ApiAuthMixin, APIView):
             instruments_names = [str(instrument) for instrument in instruments]
             instruments_str = ", ".join(instruments_names)
 
-            # 스타일 쉼표로 구분
             style_id = request.data['style_id']
             style = Style.objects.get(id=style_id)
             style_name = str(style)
@@ -952,6 +951,16 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                     }
                 }
             ),
+            400: openapi.Response(
+                description="사용자의 뮤직비디오로 인해 시청 기록 등록 실패",
+                examples={
+                    "application/json": {
+                        "code": "M008_3",
+                        "status": 400,
+                        "message": "사용자의 뮤직비디오입니다.",
+                    }
+                }
+            ),
             404: openapi.Response(
                 description="잘못된 요청",
                 examples={
@@ -965,7 +974,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                             "code": "M008_2",
                             "status": 404,
                             "message": "뮤직 비디오를 찾을 수 없습니다."
-                        }
+                        },
                     ]
                 }
             ),
@@ -974,7 +983,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 examples={
                     "application/json": {
                         "history_id": 0,
-                        "code": "M008_3",
+                        "code": "M008_4",
                         "status": 409,
                         "message": "이미 시청한 기록이 있습니다.",
                     }
@@ -1005,12 +1014,22 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             }
             logging.warning(f'WARNING {client_ip} {current_time} POST /history music_video 404 does not existing')
             return Response(response_data, status=404)
+
+        if mv.username == member:
+            response_data = {
+                "code": "M008_3",
+                "status": 400,
+                "message": "사용자의 뮤직비디오입니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} POST /400')
+            return Response(response_data, status=400)
+
         try:
             history_test = History.objects.get(username=member, mv_id=mv)
             if history_test:
                 response_data = {
                     "history_id": history_test.id,
-                    "code": "M008_3",
+                    "code": "M008_4",
                     "status": 409,
                     "message": "이미 시청한 기록이 있습니다."
                 }
@@ -1039,7 +1058,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
         except Exception as e:
             logging.error(f'ERROR {client_ip} {current_time} 500 failed: {str(e)}')
             response_data = {
-                "code": "M008_4",
+                "code": "M008_5",
                 "status": 500,
                 "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
             }
