@@ -115,7 +115,7 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
         return []
 
     def get_profile_image(self, obj):
-        return obj.member_id.profile_image
+        return obj.username.profile_image
 
 class HistorySerializer(serializers.ModelSerializer):
     class Meta:

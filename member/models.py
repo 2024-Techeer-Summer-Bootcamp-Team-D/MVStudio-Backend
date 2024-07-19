@@ -23,7 +23,7 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('이메일은 필수 항목입니다.')
         if not password:
-            raise ValueError('패드워드는 필수 항목입니다.')
+            raise ValueError('패스워드는 필수 항목입니다.')
 
         user = self.model(
             username=username,

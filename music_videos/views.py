@@ -7,7 +7,8 @@ from drf_yasg import openapi
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from member.models import Member
+
+from member.models import Member, Country
 from .models import Genre, Instrument, MusicVideo, History, Style
 from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
 from .tasks import suno_music, create_video, mv_create
@@ -168,7 +169,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'username': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
@@ -432,7 +433,7 @@ class MusicVideoDevelopView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'username': openapi.Schema(type=openapi.TYPE_INTEGER, description='회원 ID'),
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
@@ -585,7 +586,66 @@ class MusicVideoDevelopView(APIView):
                 "message": f"서버 오류: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class MusicVideoDeleteView(ApiAuthMixin, APIView):
+
+class MusicVideoManageView(ApiAuthMixin, APIView):
+    @swagger_auto_schema(
+        operation_summary="뮤직비디오 상세 정보 조회 API",
+        operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
+        responses={
+            200: openapi.Response(
+                description="뮤직비디오 상세 정보 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M003",
+                        "status": 200,
+                        "message": "뮤직비디오 상세 정보 조회 성공",
+                        "data": {
+                            "subject": "string",
+                            "member_name": "string",
+                            "length": 0,
+                            "mv_file": "string",
+                            "views": 0,
+                            "lyrics": "string",
+                        }
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="뮤직비디오 상세 정보 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "M003_1",
+                        "status": 404,
+                        "message": "뮤직비디오를 찾을 수 없습니다."
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request, mv_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            music_video = MusicVideo.objects.get(id=mv_id)
+        except MusicVideo.DoesNotExist:
+            response_data = {
+                "code": "M003_1",
+                "status": 404,
+                "message": "뮤직비디오를 찾을 수 없습니다."
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} GET /music_videos 404 does not existing')
+            return Response(response_data, status=404)
+
+        serializer = MusicVideoDetailSerializer(music_video)
+        response_data = {
+            "data": serializer.data,
+            "code": "M003",
+            "status": 200,
+            "message": "뮤직비디오 상세 정보 조회 성공"
+        }
+        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
+        return Response(response_data, status=200)
+
     @swagger_auto_schema(
         operation_summary="뮤직비디오 삭제 API",
         operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
@@ -642,6 +702,7 @@ class MusicVideoDeleteView(ApiAuthMixin, APIView):
         logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
         return Response(response_data, status=200)
 
+
 class GenreListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="장르 리스트 조회 API",
@@ -655,18 +716,22 @@ class GenreListView(ApiAuthMixin, APIView):
                             {
                                 "genre_id": 0,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                             {
                                 "genre_id": 1,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                             {
                                 "genre_id": 2,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                             {
                                 "genre_id": 3,
                                 "genre_name": "string",
+                                "genre_image_url": "string",
                             },
                         ],
                         "code": "M005",
@@ -870,122 +935,115 @@ class StyleListView(ApiAuthMixin, APIView):
             logging.warning(f'WARNING {client_ip} {current_time} GET /genre_list 500 failed : {e}')
             return Response(response_data, status=500)
 
-class MusicVideoDetailView(ApiAuthMixin, APIView):
-
-    @swagger_auto_schema(
-        operation_summary="뮤직비디오 상세 정보 조회 API",
-        operation_description="특정 뮤직비디오의 ID를 통해 상세 정보를 조회합니다.",
-        responses={
-            200: openapi.Response(
-                description="뮤직비디오 상세 정보 조회 성공",
-                examples={
-                    "application/json": {
-                        "code": "M003",
-                        "status": 200,
-                        "message": "뮤직비디오 상세 정보 조회 성공",
-                        "data": {
-                            "subject": "string",
-                            "member_name": "string",
-                            "length": 0,
-                            "mv_file": "string",
-                            "views": 0,
-                            "lyrics": "string",
-                        }
-                    }
-                }
-            ),
-            404: openapi.Response(
-                description="뮤직비디오 상세 정보 조회 실패",
-                examples={
-                    "application/json": {
-                        "code": "M003_1",
-                        "status": 404,
-                        "message": "뮤직비디오를 찾을 수 없습니다."
-                    }
-                }
-            )
-        }
-    )
-    def get(self, request, mv_id):
-        client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            music_video = MusicVideo.objects.get(id=mv_id)
-        except MusicVideo.DoesNotExist:
-            response_data = {
-                "code": "M003_1",
-                "status": 404,
-                "message": "뮤직비디오를 찾을 수 없습니다."
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} GET /music_videos 404 does not existing')
-            return Response(response_data, status=404)
-
-        serializer = MusicVideoDetailSerializer(music_video)
-        response_data = {
-            "data": serializer.data,
-            "code": "M003",
-            "status": 200,
-            "message": "뮤직비디오 상세 정보 조회 성공"
-        }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 view success')
-        return Response(response_data, status=200)
 
 class HistoryCreateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
-        operation_summary="뮤직비디오 삭제",
-        operation_description="이 API는 특정 회원의 뮤직비디오를 삭제하는 데 사용됩니다.",
+        operation_summary="뮤직비디오 시청 기록 등록 API",
+        operation_description="사용자가 특정 뮤직비디오를 조회했을 때 시청 기록을 등록합니다.",
         responses={
-            200: openapi.Response(
-                description="뮤직비디오 삭제 성공",
+            201: openapi.Response(
+                description="사용자의 뮤직비디오 시청 기록 등록 성공",
                 examples={
                     "application/json": {
-                        "code": "M004",
-                        "status": 200,
-                        "message": "뮤직비디오 삭제 성공",
-                        "data": {
-                            "member_id": "member_id",
-                            "subject": "subject",
-                            "is_deleted": "1",
-                        }
+                        "history_id": 0,
+                        "code": "M008",
+                        "status": 201,
+                        "message": "사용자의 뮤직비디오 시청 기록 등록 성공",
                     }
                 }
             ),
             404: openapi.Response(
-                description="뮤직비디오 삭제 실패",
+                description="잘못된 요청",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "M008_1",
+                            "status": 404,
+                            "message": "회원 정보를 찾을 수 없습니다."
+                        },
+                        {
+                            "code": "M008_2",
+                            "status": 404,
+                            "message": "뮤직 비디오를 찾을 수 없습니다."
+                        }
+                    ]
+                }
+            ),
+            409: openapi.Response(
+                description="이미 시청한 기록이 있습니다.",
                 examples={
                     "application/json": {
-                        "code": "M004_1",
-                        "status": 404,
-                        "message": "해당 뮤직비디오를 찾을 수 없습니다."
+                        "history_id": 0,
+                        "code": "M008_3",
+                        "status": 409,
+                        "message": "이미 시청한 기록이 있습니다.",
                     }
                 }
             ),
         }
     )
-    def delete(self, request, mv_id):
+    def post(self, request, username, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            music_video = MusicVideo.objects.get(id=mv_id)
+            member = Member.objects.get(username=username)
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M008_1",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다"
+            }
+            logging.warning(f'WARNING {client_ip} {current_time} /history member 404 does not existing')
+            return Response(response_data, status=404)
+        try:
+            mv = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
             response_data = {
-                "code": "M004_1",
+                "code": "M008_2",
                 "status": 404,
-                "message": "해당 뮤직비디오를 찾을 수 없습니다."
+                "message": "뮤직 비디오를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} PATCH /music_video 404 does not existing')
+            logging.warning(f'WARNING {client_ip} {current_time} POST /history music_video 404 does not existing')
             return Response(response_data, status=404)
-        music_video.is_deleted = True
-        music_video.save()
-        serializer = MusicVideoDeleteSerializer(music_video)
-        response_data = {
-            "code": "M004",
-            "status": 200,
-            "message": "뮤직비디오 삭제 성공",
-            "data": serializer.data
-        }
-        logging.info(f'INFO {client_ip} {current_time} PATCH /music_video/{mv_id} 200 delete success')
-        return Response(response_data, status=200)
+        try:
+            history_test = History.objects.get(username=member, mv_id=mv)
+            if history_test:
+                response_data = {
+                    "history_id": history_test.id,
+                    "code": "M008_3",
+                    "status": 409,
+                    "message": "이미 시청한 기록이 있습니다."
+                }
+                logging.warning(f'INFO {client_ip} {current_time} /history 409 conflict')
+                return Response(response_data, status=409)
+        except:
+            pass
+        try:
+            histories = History.objects.create(
+                username=member,
+                mv_id=mv,
+                current_play_time=0,
+                is_deleted=False
+            )
+            response_data = {
+                "history_id": histories.id,
+                "code": "M008",
+                "status": 201,
+                "message": "시청 기록 추가 성공"
+            }
+            mv.views += 1
+            mv.recently_viewed += 1
+            mv.save()
+            logging.info(f'INFO {client_ip} {current_time} GET /history 201 success')
+            return Response(response_data, status=201)
+        except Exception as e:
+            logging.error(f'ERROR {client_ip} {current_time} 500 failed: {str(e)}')
+            response_data = {
+                "code": "M008_4",
+                "status": 500,
+                "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
+            }
+            return Response(response_data, status=500)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -1289,6 +1347,7 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
 
 class MusicVideoStatusView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
+        operation_summary="뮤직비디오 제작 상태 확인 API",
         operation_description="뮤직비디오 제작 작업의 상태를 확인합니다",
         manual_parameters=[
             openapi.Parameter(
