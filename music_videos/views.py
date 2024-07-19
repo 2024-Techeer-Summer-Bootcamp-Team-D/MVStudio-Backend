@@ -139,16 +139,16 @@ class CreateLyricsView(ApiAuthMixin, APIView):
             lyrics3_ori, lyrics3_eng = extract_lyrics(response.choices[2].message.content)
 
             response_data = {
-                "lyrics_ori": {
-                    "lyrics1": lyrics1_ori,
-                    "lyrics2": lyrics2_ori,
-                    "lyrics3": lyrics3_ori,
-                },
-                "lyrics_eng": {
-                    "lyrics1": lyrics1_eng,
-                    "lyrics2": lyrics2_eng,
-                    "lyrics3": lyrics3_eng,
-                },
+                "lyrics_ori": [
+                    lyrics1_ori,
+                    lyrics2_ori,
+                    lyrics3_ori,
+                ],
+                "lyrics_eng": [
+                    lyrics1_eng,
+                    lyrics2_eng,
+                    lyrics3_eng,
+                ],
                 "code": "M007",
                 "status": 201,
                 "message": "가사 생성 성공"
