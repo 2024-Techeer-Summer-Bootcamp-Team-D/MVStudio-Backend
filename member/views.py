@@ -35,6 +35,39 @@ User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
+class MemberUsernameView(ApiAuthMixin, APIView):
+    @swagger_auto_schema(
+        operation_summary="본인 회원 username 조회 API",
+        operation_description="Retrieve the username of the current logged-in user",
+        responses={
+            200: MemberDetailSerializer,
+            404: "회원 정보가 없습니다."
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            members = User.objects.all()
+        except Member.DoesNotExist:
+            response_data = {
+                "code": "M001_1",
+                "status": 404,
+                "message": "회원 정보가 없습니다."
+            }
+            logger.warning(f'WARNING {client_ip} {current_time} GET /members 404 does not existing')
+            return Response(response_data, status=404)
+        serializer = MemberDetailSerializer(members, many=True)
+
+        response_data = {
+            "username": request.user.username,
+            "code": "M001",
+            "status": 200,
+            "message": "회원 정보 조회 성공",
+        }
+        logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
+        return Response(response_data, status=200)
+
 class UserCreateApi(PublicApiMixin, APIView):
     @swagger_auto_schema(
         operation_summary="회원가입 API",
@@ -46,10 +79,6 @@ class UserCreateApi(PublicApiMixin, APIView):
         }
     )
     def post(self, request, *args, **kwargs):
-        """
-        회원가입 api
-
-        """
         serializer = RegisterSerializer(data=request.data)
         if not serializer.is_valid(raise_exception=True):
             return Response({
