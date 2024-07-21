@@ -2,11 +2,11 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.utils.translation import gettext_lazy as _
+from django.shortcuts import redirect
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -17,6 +17,7 @@ from oauth.mixins import ApiAuthMixin, PublicApiMixin
 from .models import Member, Country
 from music_videos.s3_utils import upload_file_to_s3
 from .serializers import MemberDetailSerializer, CountrySerializer, RegisterSerializer
+from .payment import KakaoPayClient
 
 import jwt
 from datetime import datetime
@@ -435,7 +436,7 @@ class CountryListView(ApiAuthMixin, APIView):
             return Response(response_data, status=500)
 
 
-class RefreshJWTtoken(APIView):
+class RefreshJWTtoken(PublicApiMixin, APIView):
     @swagger_auto_schema(
         operation_summary="Access Token 재발급 API",
         operation_description="Refresh JWT token",
@@ -487,3 +488,60 @@ class RefreshJWTtoken(APIView):
                 'access_token': access_token,
             }
         )
+
+
+
+class KakaoPayment(ApiAuthMixin, APIView):
+    @swagger_auto_schema(
+        operation_description="카카오페이 결제 요청",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'credits': openapi.Schema(type=openapi.TYPE_INTEGER, description='크레딧 수'),
+                'price': openapi.Schema(type=openapi.TYPE_NUMBER, format=openapi.FORMAT_FLOAT, description='가격')
+            }
+        ),
+        responses={
+            302: openapi.Response(
+                description='결제 페이지로 리다이렉트',
+                examples={
+                    'application/json': {
+                        "message": "결제 요청 성공"
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description='결제 요청 실패',
+                examples={
+                    'application/json': {
+                        "message": "결제 요청 실패"
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        credits = request.data.get('credits')
+        price = request.data.get('price')
+        user = request.user
+
+        kakao_pay = KakaoPayClient()
+
+        # 카카오페이 결제준비 API 호출
+        success, ready_process = kakao_pay.ready(user, credits, price)
+
+        if success:
+            response_data = {
+                "message": "결제 요청 성공"
+            }
+            response = redirect(ready_process["next_redirect_pc_url"])
+            return response
+        else:
+            response_data = {
+                "message": "결제 요청 실패"
+            }
+            redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
+            response = redirect(redirect_uri)
+            return response
+
+
