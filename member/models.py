@@ -37,11 +37,11 @@ class UserManager(BaseUserManager):
 
 
 class Member(AbstractUser):
-    username = models.CharField(_('username'), max_length=150, unique=True)
+    username = models.CharField(_('username'), max_length=150, unique=True, null=False)
     email = models.EmailField(_('email address'), unique=True, blank=True)
     name = models.CharField(max_length=50, null=True, blank=True)
     nickname = models.CharField(max_length=50, null=True, blank=True)
-    profile_image = models.CharField(max_length=2000, null=True, blank=True)
+    profile_image = models.ImageField(null=True, blank=True)
     comment = models.CharField(max_length=200, null=True, blank=True)
     birthday = models.DateField(null=True, blank=True)
     sex = models.CharField(max_length=1, null=True, blank=True)
