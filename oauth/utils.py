@@ -40,7 +40,7 @@ def social_member_create(username, password=None, **extra_fields):
 
 @transaction.atomic
 def social_user_get_or_create(username, **extra_data):
-    member = Member.objects.filter(email=username).first()
+    member = Member.objects.filter(username=username).first()
 
     if member:
         return member, False
