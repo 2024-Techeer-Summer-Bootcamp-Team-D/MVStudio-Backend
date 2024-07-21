@@ -1,29 +1,16 @@
-<<<<<<< Updated upstream
 from rest_framework import serializers, status
-=======
-# views.py
-from rest_framework import status
-from rest_framework.views import APIView
->>>>>>> Stashed changes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-
-<<<<<<< Updated upstream
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import redirect
-=======
-from .models import Member, Country
-from .serializers import MemberDetailSerializer, CountrySerializer
->>>>>>> Stashed changes
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-<<<<<<< Updated upstream
 from oauth.authenticate import generate_access_token, jwt_login
 from oauth.mixins import ApiAuthMixin, PublicApiMixin
 
@@ -33,12 +20,6 @@ from .serializers import MemberDetailSerializer, CountrySerializer, RegisterSeri
 from .payment import KakaoPayClient
 
 import jwt
-=======
-from music_videos.s3_utils import upload_file_to_s3
-from oauth.mixins import ApiAuthMixin
-from django.contrib.auth import get_user_model
-
->>>>>>> Stashed changes
 from datetime import datetime
 import logging
 import os
@@ -51,16 +32,10 @@ parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 # 상위 폴더의 경로를 sys.path에 추가합니다
 sys.path.insert(0, parent_dir)
 
-<<<<<<< Updated upstream
-=======
-
-
->>>>>>> Stashed changes
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
-<<<<<<< Updated upstream
 class UserCreateApi(PublicApiMixin, APIView):
     @swagger_auto_schema(
         operation_summary="회원가입 API",
@@ -152,8 +127,6 @@ class LogoutApi(PublicApiMixin, APIView):
 
         return response
 
-=======
->>>>>>> Stashed changes
 class MemberDetailView(ApiAuthMixin, APIView):
     parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
@@ -251,7 +224,6 @@ class MemberDetailView(ApiAuthMixin, APIView):
             logger.info(f'INFO {client_ip} {current_time} PATCH /members/{username} 200 update success')
             return Response(response_data, status=200)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-<<<<<<< Updated upstream
     @swagger_auto_schema(
         operation_summary="회원 탈퇴 API",
         operation_description="Delete the current logged-in user",
@@ -286,9 +258,6 @@ class MemberDetailView(ApiAuthMixin, APIView):
             "message": "Delete user success"
         }, status=status.HTTP_204_NO_CONTENT)
 class CountryListView(ApiAuthMixin, APIView):
-=======
-class CountryListView(APIView):
->>>>>>> Stashed changes
     @swagger_auto_schema(
         operation_summary="국가 리스트 조회 API",
         operation_description="이 API는 사용자의 국가를 선택할 수 있도록 국가 리스트를 제공하는 기능을 합니다.",

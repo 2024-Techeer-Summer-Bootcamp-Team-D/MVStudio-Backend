@@ -4,10 +4,7 @@ from rest_framework.authentication import BaseAuthentication, CSRFCheck
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import datetime, jwt
-<<<<<<< Updated upstream
 from django.middleware.csrf import CsrfViewMiddleware
-=======
->>>>>>> Stashed changes
 
 User = get_user_model()
 
