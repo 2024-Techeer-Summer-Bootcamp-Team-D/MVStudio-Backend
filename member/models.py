@@ -2,6 +2,9 @@ from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.base_user import BaseUserManager
+
+from music_videos.s3_utils import upload_file_to_s3
+
 class Country(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
@@ -41,7 +44,7 @@ class Member(AbstractUser):
     email = models.EmailField(_('email address'), unique=True, blank=True)
     name = models.CharField(max_length=50, null=True, blank=True)
     nickname = models.CharField(max_length=50, null=True, blank=True)
-    profile_image = models.ImageField(null=True, blank=True)
+    profile_image = models.CharField(max_length=2000, null=True, blank=True)
     comment = models.CharField(max_length=200, null=True, blank=True)
     birthday = models.DateField(null=True, blank=True)
     sex = models.CharField(max_length=1, null=True, blank=True)

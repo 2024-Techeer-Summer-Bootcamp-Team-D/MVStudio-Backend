@@ -156,7 +156,6 @@ class LogoutApi(PublicApiMixin, APIView):
         return response
 
 class MemberDetailView(ApiAuthMixin, APIView):
-    parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
         operation_summary="회원 정보 조회 API",
         operation_description="Retrieve member details by username",
@@ -188,17 +187,111 @@ class MemberDetailView(ApiAuthMixin, APIView):
         logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
         return Response(response_data, status=200)
 
+    parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
         operation_summary="회원 정보 수정 API",
         operation_description="Update member details by username",
-        request_body=MemberDetailSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                'nickname',
+                openapi.IN_FORM,
+                description="Nickname",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'profile_image',
+                openapi.IN_FORM,
+                description="Profile image file",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'sex',
+                openapi.IN_FORM,
+                description="Sex",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'comment',
+                openapi.IN_FORM,
+                description="Comment",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'country',
+                openapi.IN_FORM,
+                description="Country",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'birthday',
+                openapi.IN_FORM,
+                description="Birthday",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'youtube_account',
+                openapi.IN_FORM,
+                description="YouTube account",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
+                'instagram_account',
+                openapi.IN_FORM,
+                description="Instagram account",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+        ],
         responses={
-            200: "회원 정보 수정 완료",
-            404: "회원 정보가 없습니다.",
-            500: "s3 이미지 업로드 실패."
+            200: openapi.Response(
+                description="회원 정보 수정 성공",
+                examples={
+                    "application/json": {
+                        "code": "P002",
+                        "status": 200,
+                        "message": "회원 정보 수정 성공"
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="회원 정보가 없습니다.",
+                examples={
+                    "application/json": {
+                        "code": "P002_2",
+                        "status": 404,
+                        "message": "회원 정보가 없습니다."
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="유효하지 않은 데이터입니다.",
+                examples={
+                    "application/json": {
+                        "code": "P002_1",
+                        "status": 400,
+                        "message": "유효하지 않은 데이터입니다."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="s3 이미지 업로드 실패",
+                examples={
+                    "application/json": {
+                        "code": "P002_3",
+                        "status": 500,
+                        "message": "s3 이미지 업로드 실패"
+                    }
+                }
+            ),
         }
     )
-
 
     def patch(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
@@ -215,7 +308,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
             return Response(response_data, status=404)
 
         data = request.data.copy()
-        image_file = data['profile_image']
+        image_file = data.get('profile_image', None)
 
         if image_file:
             content_type = image_file.content_type
