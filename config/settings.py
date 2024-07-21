@@ -79,7 +79,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:4173",
     "http://127.0.0.1:4173",
 ]
-
+CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -118,7 +118,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
-# RDS MySQL 사용 Prod
+# # RDS MySQL 사용 Prod
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -240,7 +240,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 BASE_BACKEND_URL =  env('BASE_BACKEND_URL')
 BASE_FRONTEND_URL = env('BASE_FRONTEND_URL')
-BASE_FRONTEND_LOGIN_URL = env('BASE_FRONTEND_LOGIN_URL')
 
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
@@ -272,3 +271,7 @@ CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_TIMEZONE = 'Asia/Seoul'
 CELERY_ENABLE_UTC = False
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+#Kakao Pay 설정
+KAKAO_APP_ADMIN_KEY = env('KAKAO_APP_ADMIN_KEY')
+CID = env('CID')
