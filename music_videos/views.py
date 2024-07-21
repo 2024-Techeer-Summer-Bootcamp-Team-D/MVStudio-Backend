@@ -954,7 +954,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 description="사용자의 뮤직비디오로 인해 시청 기록 등록 실패",
                 examples={
                     "application/json": {
-                        "code": "M008_3",
+                        "code": "M008_2",
                         "status": 400,
                         "message": "사용자의 뮤직비디오입니다.",
                     }
@@ -977,7 +977,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 examples={
                     "application/json": {
                         "history_id": 0,
-                        "code": "M008_4",
+                        "code": "M008_3",
                         "status": 409,
                         "message": "이미 시청한 기록이 있습니다.",
                     }
