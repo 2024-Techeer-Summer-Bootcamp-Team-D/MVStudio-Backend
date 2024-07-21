@@ -1,7 +1,12 @@
 from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
+<<<<<<< Updated upstream
 from django.contrib.auth.base_user import BaseUserManager
 from .constants import *
+=======
+from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.base_user import BaseUserManager
+>>>>>>> Stashed changes
 class Country(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
@@ -23,7 +28,11 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('이메일은 필수 항목입니다.')
         if not password:
+<<<<<<< Updated upstream
             raise ValueError('패스워드는 필수 항목입니다.')
+=======
+            raise ValueError('패드워드는 필수 항목입니다.')
+>>>>>>> Stashed changes
 
         user = self.model(
             username=username,
@@ -37,8 +46,13 @@ class UserManager(BaseUserManager):
 
 
 class Member(AbstractUser):
+<<<<<<< Updated upstream
     username = models.CharField('username', max_length=150, unique=True)
     email = models.EmailField('email address', unique=True, blank=True)
+=======
+    username = models.CharField(_('username'), max_length=150, unique=True)
+    email = models.EmailField(_('email address'),unique=True, blank=True)
+>>>>>>> Stashed changes
     name = models.CharField(max_length=50, null=True, blank=True)
     nickname = models.CharField(max_length=50, null=True, blank=True)
     profile_image = models.CharField(max_length=2000, null=True, blank=True)
@@ -59,6 +73,7 @@ class Member(AbstractUser):
 
     def __str__(self):
         return self.username
+<<<<<<< Updated upstream
 
 class KakaoPaymentRequest(models.Model):
     username = models.ForeignKey(Member, to_field='username', on_delete=models.CASCADE)
@@ -90,3 +105,5 @@ class KakaoPaymentApprovalResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
+=======
+>>>>>>> Stashed changes

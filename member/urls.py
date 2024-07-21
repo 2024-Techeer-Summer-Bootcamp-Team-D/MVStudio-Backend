@@ -1,6 +1,7 @@
 # member/urls.py
 
 from django.urls import path
+<<<<<<< Updated upstream
 from .views import *
 from .callback import *
 
@@ -17,4 +18,14 @@ urlpatterns = [
     path('/payments/callback/<int:pk>/fail', KakaoPayFailCallbackAPIView.as_view(), name='kakao-pay-fail'),
     path('/payments/callback/<int:pk>/success', KakaoPaySuccessCallbackAPIView.as_view(), name='kakao-pay-success'),
 
+=======
+from .views import MemberDetailView, CountryListView
+
+
+
+urlpatterns = [
+
+    path('<int:member_id>', MemberDetailView.as_view(), name='member-detail'),
+    path('countries', CountryListView.as_view(), name='countries-list'),
+>>>>>>> Stashed changes
 ]
