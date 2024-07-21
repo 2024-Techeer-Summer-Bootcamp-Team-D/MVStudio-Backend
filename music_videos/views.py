@@ -169,7 +169,6 @@ class MusicVideoView(ApiAuthMixin, APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'username': openapi.Schema(type=openapi.TYPE_STRING, description='회원 ID'),
                 'subject': openapi.Schema(type=openapi.TYPE_STRING, description='가사의 주제'),
                 'genres_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='장르 ID 목록'),
                 'instruments_ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='악기 ID 목록'),
@@ -180,7 +179,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
                 'lyrics_eng': openapi.Schema(type=openapi.TYPE_STRING, description='가사 번역')
             },
-            required=['username', 'subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics', 'lyrics_eng']
+            required=['subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics', 'lyrics_eng']
         ),
         responses={
             201: openapi.Response(
@@ -208,12 +207,11 @@ class MusicVideoView(ApiAuthMixin, APIView):
     def post(self,request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         try:
+            username = request.user.username
             subject = request.data['subject']
             vocal = request.data['vocal']
             tempo = request.data['tempo']
-            username = request.data['username']
             language = request.data['language']
             lyrics = request.data['lyrics']
             lyrics_eng = request.data['lyrics_eng']
@@ -963,16 +961,11 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 }
             ),
             404: openapi.Response(
-                description="잘못된 요청",
+                description="시청 기록 등록 실패",
                 examples={
                     "application/json": [
                         {
                             "code": "M008_1",
-                            "status": 404,
-                            "message": "회원 정보를 찾을 수 없습니다."
-                        },
-                        {
-                            "code": "M008_2",
                             "status": 404,
                             "message": "뮤직 비디오를 찾을 수 없습니다."
                         },
@@ -992,19 +985,11 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             ),
         }
     )
-    def post(self, request, username, mv_id):
+    def post(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = Member.objects.get(username=username)
-        except Member.DoesNotExist:
-            response_data = {
-                "code": "M008_1",
-                "status": 404,
-                "message": "회원 정보를 찾을 수 없습니다"
-            }
-            logging.warning(f'WARNING {client_ip} {current_time} /history member 404 does not existing')
-            return Response(response_data, status=404)
+        member = request.user.username
+
         try:
             mv = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
@@ -1190,9 +1175,10 @@ class HistoryDetailView(ApiAuthMixin, APIView):
             ),
         }
     )
-    def get(self, request, username):
+    def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        username = request.user.username
         try:
             member = Member.objects.filter(username=username).first()
         except Member.DoesNotExist:

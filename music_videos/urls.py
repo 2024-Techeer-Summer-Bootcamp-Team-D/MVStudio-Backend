@@ -14,6 +14,6 @@ urlpatterns = [
     path('/instruments', views.InstrumentListView.as_view(), name='instruments-list'),
     path('/styles', views.StyleListView.as_view(), name='styles-list'),
     path('/histories/<int:history_id>', views.HistoryUpdateView.as_view(), name='update-history'),
-    path('/histories/<str:username>/<int:mv_id>', views.HistoryCreateView.as_view(), name='create-history'),
-    path('/histories-list/<str:username>', views.HistoryDetailView.as_view(), name='history-detail'),
+    path('/histories/<int:mv_id>', views.HistoryCreateView.as_view(), name='create-history'),
+    path('/histories-list', views.HistoryDetailView.as_view(), name='history-detail'),
 ]
