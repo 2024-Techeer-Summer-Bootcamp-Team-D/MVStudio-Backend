@@ -177,9 +177,10 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포 유형'),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
                 'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬 유형'),
-                'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사')
+                'lyrics': openapi.Schema(type=openapi.TYPE_STRING, description='가사'),
+                'lyrics_eng': openapi.Schema(type=openapi.TYPE_STRING, description='가사 번역')
             },
-            required=['username', 'subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics']
+            required=['username', 'subject', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'lyrics', 'lyrics_eng']
         ),
         responses={
             201: openapi.Response(
