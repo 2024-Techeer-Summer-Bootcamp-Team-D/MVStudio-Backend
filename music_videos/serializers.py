@@ -109,12 +109,10 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
         return obj.style_id.name
     def get_genres(self, obj):
         return [genre.name for genre in obj.genre_id.all()]
-
     def get_instruments(self, obj):
         if obj.instrument_id.exists():
             return [instrument.name for instrument in obj.instrument_id.all()]
         return []
-
     def get_profile_image(self, obj):
         return obj.username.profile_image
 
