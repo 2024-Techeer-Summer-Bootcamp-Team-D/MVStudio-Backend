@@ -7,10 +7,12 @@ from drf_yasg import openapi
 
 from django.conf import settings
 from django.core.paginator import Paginator
+from django.contrib.auth import get_user_model
 
-from member.models import Member, Country
+from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History, Style
-from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, HistorySerializer, StyleSerializer
+from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, StyleSerializer
+
 from .tasks import suno_music, create_video, mv_create
 from celery import group, chord
 from celery.result import AsyncResult
@@ -23,7 +25,9 @@ from django.db.models import Case, When , Q
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
-from oauth.mixins import ApiAuthMixin, PublicApiMixin
+from oauth.mixins import ApiAuthMixin
+
+User = get_user_model()
 
 class CreateLyricsView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -1486,3 +1490,5 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
                 "message": "task가 존재하지 않습니다."
             }
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+
+
