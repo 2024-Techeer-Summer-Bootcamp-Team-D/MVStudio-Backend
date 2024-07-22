@@ -87,7 +87,7 @@ class CreateLyricsView(ApiAuthMixin, APIView):
             prompt = (
                 f"Create song lyrics based on the keyword '{subject}'. "
                 f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
-                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and At least 2 sentences per line(very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
+                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and contain one sentence per line (very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
                 f"---(Original Lyrics)---<br /><br />"
                 f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
