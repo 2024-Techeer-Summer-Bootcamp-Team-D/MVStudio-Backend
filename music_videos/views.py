@@ -1449,6 +1449,8 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
         }
     )
     def get(self, request, task_id):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             task = AsyncResult(task_id)
 
@@ -1484,6 +1486,7 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
                     'message': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
                 }
                 http_status = status.HTTP_200_OK
+            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/status/{task_id} 200 success')
             return Response(response_data, status=http_status)
         except:
             response_data = {
@@ -1492,6 +1495,7 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
                 "HTTPstatus": 404,
                 "message": "task가 존재하지 않습니다."
             }
+            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/status/{task_id} 404 does not existing')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
 
