@@ -36,27 +36,58 @@ User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
+
 class MemberInfoView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="본인 회원 Info 조회 API",
         operation_description="Retrieve the username of the current logged-in user",
         responses={
-            200: MemberDetailSerializer,
-            404: "회원 정보가 없습니다."
+            200: openapi.Response(
+                description="본인 회원 Info 조회 성공",
+                examples={
+                    "application/json": {
+                        "username": "string",
+                        "credits": "string",
+                        "code": "A004",
+                        "status": 200,
+                        "message": "본인 회원 Info 조회 성공",
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="본인 회원 Info 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "A004_1",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
         }
     )
+
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        member = request.user
+        if not member:
+            response_data = {
+                "code": "A004_1",
+                "status": 404,
+                "message": "회원정보를 찾을 수 없습니다.",
+            }
+            logger.warning(f'[{current_time}] {client_ip} - GET /members 404 Info check failed')
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         response_data = {
-            "username": request.user.username,
+            "username": member.username,
             "credits": request.user.credits,
-            "code": "M001",
+            "code": "A004",
             "status": 200,
-            "message": "회원 정보 조회 성공",
+            "message": "본인 회원 Info 조회 성공",
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
+        logger.info(f'[{current_time}] {client_ip} - GET /members 200 Info check success')
         return Response(response_data, status=200)
 
 class UserCreateApi(PublicApiMixin, APIView):
@@ -65,22 +96,54 @@ class UserCreateApi(PublicApiMixin, APIView):
         operation_description="Create a new user",
         request_body=RegisterSerializer,
         responses={
-            200: "User created successfully",
-            409: "Request Body Error"
+            201: openapi.Response(
+                description="회원가입 성공",
+                examples={
+                    "application/json": {
+                        "access_token": "string",
+                        "code": "A001",
+                        "status": 201,
+                        "message": "회원가입 성공",
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="회원가입 실패",
+                examples={
+                    "application/json": {
+                        "code": "A001_1",
+                        "status": 400,
+                        "message": "회원가입 실패"
+                    }
+                }
+            )
         }
     )
+
     def post(self, request, *args, **kwargs):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         serializer = RegisterSerializer(data=request.data)
-        if not serializer.is_valid(raise_exception=True):
-            return Response({
-                "message": "Request Body Error"
-            }, status=status.HTTP_409_CONFLICT)
+        if not serializer.is_valid():
+            response_data = {
+                "code": "A001_1",
+                "status": 400,
+                "message": "회원가입 실패"
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /members 400 Signup failed: {serializer.errors}')
+            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         user = serializer.save()
-
-        response = Response(status=status.HTTP_200_OK)
-        response = jwt_login(response=response, user=user)
-        return response
+        response = Response()
+        response_token = jwt_login(response=response, user=user)
+        response_data = {
+            "access_token": response.data.get('access_token'),
+            "code": "A001",
+            "status": 201,
+            "message": "회원가입 성공",
+        }
+        logger.info(f'[{current_time}] {client_ip} - POST /members 201 Signup successful for user id: {user.id}')
+        return Response(data=response_data, status=status.HTTP_201_CREATED)
 
 
 class LoginApi(PublicApiMixin, APIView):
@@ -96,9 +159,44 @@ class LoginApi(PublicApiMixin, APIView):
             required=['username', 'password']
         ),
         responses={
-            200: "Login successful",
-            400: "username/password required or wrong password",
-            404: "User not found"
+            201: openapi.Response(
+                description="로그인 성공",
+                examples={
+                    "application/json": {
+                        "access_token": "string",
+                        "code": "A002",
+                        "status": 201,
+                        "message": "로그인 성공",
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="잘못된 요청",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "A002_1",
+                            "status": 400,
+                            "message": "사용자 이름/비밀번호를 작성해주세요."
+                        },
+                        {
+                            "code": "A002_2",
+                            "status": 400,
+                            "message": "잘못된 비밀번호입니다."
+                        }
+                    ]
+                }
+            ),
+            404: openapi.Response(
+                description="로그인 실패",
+                examples={
+                    "application/json": {
+                        "code": "A002_3",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            ),
         }
     )
     def post(self, request, *args, **kwargs):
@@ -106,44 +204,83 @@ class LoginApi(PublicApiMixin, APIView):
         username 과 password를 가지고 login 시도
         key값 : username, password
         """
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         username = request.data.get('username')
         password = request.data.get('password')
 
-        if (username is None) or (password is None):
-            return Response({
-                "message": "username/password required"
-            }, status=status.HTTP_400_BAD_REQUEST)
+        if not username or not password:
+            response_data = {
+                "code": "A002_1",
+                "status": 400,
+                "message": "사용자 이름/비밀번호를 작성해주세요."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /members 400 Login failed: {response_data["message"]}')
+            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.filter(username=username).first()
         if user is None:
-            return Response({
-                "message": "유저를 찾을 수 없습니다"
-            }, status=status.HTTP_404_NOT_FOUND)
-        if not user.check_password(password):
-            return Response({
-                "message": "wrong password"
-            }, status=status.HTTP_400_BAD_REQUEST)
+            response_data = {
+                "code": "A002_3",
+                "status": 404,
+                "message": "회원 정보를 찾을 수 없습니다."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /members 404 Member information not found: {response_data["message"]}')
+            return Response(data=response_data, status=status.HTTP_404_NOT_FOUND)
 
-        response = Response(status=status.HTTP_200_OK)
-        return jwt_login(response, user)
+        if not user.check_password(password):
+            response_data = {
+                "code": "A002_2",
+                "status": 400,
+                "message": "잘못된 비밀번호입니다."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /members 400 Incorrect password: {response_data["message"]}')
+            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
+
+        response = Response()
+        response_token = jwt_login(response=response, user=user)
+        response_data = {
+            "access_token": response.data.get('access_token'),
+            "code": "A002",
+            "status": 201,
+            "message": "로그인 성공"
+        }
+        logger.info(f'[{current_time}] {client_ip} - POST /members 201 Login successful')
+        return Response(data=response_data, status=status.HTTP_201_CREATED)
+
 
 class LogoutApi(PublicApiMixin, APIView):
     @swagger_auto_schema(
         operation_summary="로그아웃 API",
         operation_description="Log out and delete refresh token cookie",
         responses={
-            202: "Logout success"
+            202: openapi.Response(
+                description="로그아웃 성공",
+                examples={
+                    "application/json": {
+                        "code": "A003",
+                        "status": 202,
+                        "message": "로그아웃 성공",
+                    }
+                }
+            ),
         }
     )
     def post(self, request):
         """
         클라이언트 refreshtoken 쿠키를 삭제함으로 로그아웃처리
         """
-        response = Response({
-            "message": "Logout success"
-        }, status=status.HTTP_202_ACCEPTED)
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        response_data = {
+            "code": "A003",
+            "status": 202,
+            "message": "로그아웃 성공",
+        }
+        response = Response(response_data, status=status.HTTP_202_ACCEPTED)
         response.delete_cookie('refreshtoken')
 
+        logger.info(f'[{current_time}] {client_ip} - POST /members/logout 202 Logout successful')
         return response
 
 class MemberDetailView(ApiAuthMixin, APIView):
@@ -151,10 +288,42 @@ class MemberDetailView(ApiAuthMixin, APIView):
         operation_summary="회원 정보 조회 API",
         operation_description="Retrieve member details by username",
         responses={
-            200: MemberDetailSerializer,
-            404: "회원 정보가 없습니다."
+            200: openapi.Response(
+                description="회원 정보 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "A006",
+                        "status": 200,
+                        "message": "회원 정보 조회 성공",
+                        "data": {
+                            "username": "string",
+                            "email": "string",
+                            "name": "string",
+                            "nickname": "string",
+                            "profile_image": "string",
+                            "comment": "string",
+                            "country": "string",
+                            "birthday": "string",
+                            "sex": "string",
+                            "youtube_account": "string",
+                            "instagram_account": "string",
+                        }
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="회원 정보 조회 실패",
+                examples={
+                    "application/json": {
+                        "code": "A006_1",
+                        "status": 404,
+                        "message": "회원 정보를 찾을 수 없습니다."
+                    }
+                }
+            )
         }
     )
+
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -162,20 +331,21 @@ class MemberDetailView(ApiAuthMixin, APIView):
             member = User.objects.filter(username=username).first()
         except Member.DoesNotExist:
             response_data = {
-                "code": "P001_1",
+                "code": "A006_1",
                 "status": 404,
-                "message": "회원 정보가 없습니다."
+                "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /members 404 does not existing')
+            logger.warning(f'[{current_time}] {client_ip} - GET /members 404 Member information not found')
             return Response(response_data, status=404)
+
         serializer = MemberDetailSerializer(member)
         response_data = {
-            "data": serializer.data,
-            "code": "P001",
+            "code": "A006",
             "status": 200,
-            "message": "회원 정보 조회 성공"
+            "message": "회원 정보 조회 성공",
+            "data": serializer.data,
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /members 200 info check success')
+        logger.info(f'[{current_time}] {client_ip} - GET /members 200 Member information retrieval successful')
         return Response(response_data, status=200)
 
     parser_classes = (MultiPartParser, FormParser)
@@ -219,10 +389,10 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 required=False
             ),
             openapi.Parameter(
-                'country',
+                'country_id',
                 openapi.IN_FORM,
-                description="Country",
-                type=openapi.TYPE_STRING,
+                description="Country ID",
+                type=openapi.TYPE_INTEGER,
                 required=False
             ),
             openapi.Parameter(
@@ -252,39 +422,19 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 description="회원 정보 수정 성공",
                 examples={
                     "application/json": {
-                        "code": "P002",
+                        "code": "A007",
                         "status": 200,
                         "message": "회원 정보 수정 성공"
                     }
                 }
             ),
             404: openapi.Response(
-                description="회원 정보가 없습니다.",
+                description="회원 정보를 찾을 수 없습니다.",
                 examples={
                     "application/json": {
-                        "code": "P002_2",
+                        "code": "A007_1",
                         "status": 404,
-                        "message": "회원 정보가 없습니다."
-                    }
-                }
-            ),
-            400: openapi.Response(
-                description="유효하지 않은 데이터입니다.",
-                examples={
-                    "application/json": {
-                        "code": "P002_1",
-                        "status": 400,
-                        "message": "유효하지 않은 데이터입니다."
-                    }
-                }
-            ),
-            500: openapi.Response(
-                description="s3 이미지 업로드 실패",
-                examples={
-                    "application/json": {
-                        "code": "P002_3",
-                        "status": 500,
-                        "message": "s3 이미지 업로드 실패"
+                        "message": "회원 정보를 찾을 수 없습니다."
                     }
                 }
             ),
@@ -298,12 +448,12 @@ class MemberDetailView(ApiAuthMixin, APIView):
             member = User.objects.filter(username=username).first()
         except Member.DoesNotExist:
             response_data = {
-                "code": "P002_2",
+                "code": "A007_1",
                 "status": 404,
-                "message": "회원 정보가 없습니다."
+                "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} PATCH /members 404 does not existing')
-            return Response(response_data, status=404)
+            logger.warning(f'[{current_time}] {client_ip} - PATCH /members 404 Member information not found')
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         data = request.data.copy()
         image_file = data.get('profile_image', None)
@@ -317,16 +467,6 @@ class MemberDetailView(ApiAuthMixin, APIView):
             image_url = upload_file_to_s3(image_file, s3_key, ExtraArgs={
                 "ContentType": content_type,
             })
-
-            if not image_url:
-                response_data = {
-                    "code": "P002_3",
-                    "status": 500,
-                    "message": "s3 이미지 업로드 실패."
-                }
-                logger.warning(f'WARNING {client_ip} {current_time} PATCH /members 500 does not existing')
-                return Response(response_data, status=500)
-
             data['profile_image'] = image_url
         else:
             data['profile_image'] = member.profile_image
@@ -336,19 +476,40 @@ class MemberDetailView(ApiAuthMixin, APIView):
         if serializer.is_valid():
             serializer.save()
             response_data = {
-                "code": "P002",
+                "data": serializer.data,
+                "code": "A007",
                 "status": 200,
                 "message": "회원 정보 수정 완료"
             }
-            logger.info(f'INFO {client_ip} {current_time} PATCH /members/{username} 200 update success')
-            return Response(response_data, status=200)
+            logger.info(f'[{current_time}] {client_ip} - PATCH /members/{username} 200 Update successful')
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        logger.warning(f'[{current_time}] {client_ip} - PATCH /members/{username} 400 Update failed: {serializer.errors}')
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     @swagger_auto_schema(
         operation_summary="회원 탈퇴 API",
         operation_description="Delete the current logged-in user",
         responses={
-            204: "Delete user success",
-            400: "passwords do not match"
+            204: openapi.Response(
+                description="회원 탈퇴 성공",
+                examples={
+                    "application/json": {
+                        "code": "A008",
+                        "status": 204,
+                        "message": "회원 탈퇴 성공",
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="회원 탈퇴 실패",
+                examples={
+                    "application/json": {
+                        "code": "A008",
+                        "status": 400,
+                        "message": "비밀번호를 잘못 입력했습니다."
+                    }
+                }
+            ),
         }
     )
     def delete(self, request, *args, **kwargs):
@@ -357,14 +518,20 @@ class MemberDetailView(ApiAuthMixin, APIView):
         소셜 로그인 유저는 바로 삭제.
         일반 회원가입 유저는 비밀번호 입력 후 삭제.
         """
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         user = request.user
         signup_path = user.profile.signup_path
 
         if signup_path == "kakao" or signup_path == "google":
             user.delete()
-            return Response({
-                "message": "Delete user success"
-            }, status=status.HTTP_204_NO_CONTENT)
+            response_data = {
+                "code": "A008",
+                "status": 204,
+                "message": "회원 탈퇴 성공",
+            }
+            logger.info(f'[{current_time}] {client_ip} - DELETE /members/{user.username} 204 Member deletion successful')
+            return Response(data=response_data, status=status.HTTP_204_NO_CONTENT)
 
         if not check_password(request.data.get("password"), user.password):
             raise serializers.ValidationError(
@@ -372,10 +539,14 @@ class MemberDetailView(ApiAuthMixin, APIView):
             )
 
         user.delete()
+        response_data = {
+            "code": "A008",
+            "status": 204,
+            "message": "회원 탈퇴 성공",
+        }
+        logger.info(f'[{current_time}] {client_ip} - DELETE /members/{user.username} 204 Member deletion successful')
+        return Response(data=response_data, status=status.HTTP_204_NO_CONTENT)
 
-        return Response({
-            "message": "Delete user success"
-        }, status=status.HTTP_204_NO_CONTENT)
 class CountryListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="국가 리스트 조회 API",
@@ -385,14 +556,12 @@ class CountryListView(ApiAuthMixin, APIView):
                 description="국가 리스트 조회 성공",
                 examples={
                     "application/json": {
-                        "code": "P003",
+                        "code": "A010",
                         "status": 200,
                         "message": "국가 리스트 조회 성공",
                         "data": {
+                            "id": 0,
                             "name": "string",
-                            "code": "P003",
-                            "HTTPstatus": 200,
-                            "message": "국가 리스트 조회 성공"
                         }
                     }
                 }
@@ -401,7 +570,7 @@ class CountryListView(ApiAuthMixin, APIView):
                 description="국가 리스트 조회 실패",
                 examples={
                     "application/json": {
-                        "code": "P003_1",
+                        "code": "A010_1",
                         "status": 500,
                         "message": "국가 리스트 조회 실패"
                     }
@@ -416,20 +585,20 @@ class CountryListView(ApiAuthMixin, APIView):
             countries = Country.objects.all()
             serializer = CountrySerializer(countries, many=True)
             response_data = {
-                "code": "P003",
+                "code": "A010",
                 "status": 200,
                 "message": "국가 리스트 조회 성공",
                 "data": serializer.data
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /country_list 200 success')
+            logger.info(f'[{current_time}] {client_ip} - GET /countries 200 Country list retrieval successful')
             return Response(response_data, status=200)
         except Exception as e:
             response_data = {
-                "code": "P003_1",
+                "code": "A010_1",
                 "status": 500,
                 "message": "국가 리스트 조회 실패"
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /country_list 500 failed')
+            logger.error(f'[{current_time}] {client_ip} - GET /countries 500 Country list retrieval failed: {str(e)}')
             return Response(response_data, status=500)
 
 
@@ -439,52 +608,108 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
         operation_description="Refresh JWT token",
         responses={
             200: openapi.Response(
-                description="New access token",
+                description="Access Token 재발급 성공",
                 examples={
-                    'application/json': {
-                        'access_token': 'new_access_token'
+                    "application/json": {
+                        "access_token": "string",
+                        "code": "A005",
+                        "status": 200,
+                        "message": "Access Token 재발급 성공"
                     }
                 }
             ),
-            403: "Authentication credentials were not provided or expired refresh token",
-            400: "User not found or inactive"
+            400: openapi.Response(
+                description="회원 정보를 찾을 수 없습니다.",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "A005_1",
+                            "status": 400,
+                            "message": "회원 정보를 찾을 수 없습니다."
+                        },
+                        {
+                            "code": "A005_2",
+                            "status": 400,
+                            "message": "사용자의 계정이 비활성화되었습니다."
+                        }
+                    ]
+                }
+            ),
+            403: openapi.Response(
+                description="Access Token 재발급 실패",
+                examples={
+                    "application/json": [
+                        {
+                            "code": "A005_3",
+                            "status": 403,
+                            "message": "인증 자격이 증명되지 않았습니다."
+                        },
+                        {
+                            "code": "A005_4",
+                            "status": 403,
+                            "message": "리프레시 토큰이 만료되었습니다."
+                        }
+                    ]
+                }
+            ),
         }
     )
     def post(self, request, *args, **kwargs):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         refresh_token = request.COOKIES.get('refreshtoken')
 
         if refresh_token is None:
-            return Response({
-                "message": "Authentication credentials were not provided."
-            }, status=status.HTTP_403_FORBIDDEN)
+            response_data = {
+                "code": "A005_3",
+                "status": 403,
+                "message": "인증 자격이 증명되지 않았습니다."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /refresh_token 403 Authentication credentials were not provided')
+            return Response(data=response_data, status=status.HTTP_403_FORBIDDEN)
 
         try:
             payload = jwt.decode(
                 refresh_token, settings.REFRESH_TOKEN_SECRET, algorithms=['HS256']
             )
         except:
-            return Response({
-                "message": "expired refresh token, please login again."
-            }, status=status.HTTP_403_FORBIDDEN)
+            response_data = {
+                "code": "A005_4",
+                "status": 403,
+                "message": "리프레시 토큰이 만료되었습니다."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /refresh_token 403 Refresh token has expired')
+            return Response(data=response_data, status=status.HTTP_403_FORBIDDEN)
 
         user = User.objects.filter(id=payload['user_id']).first()
 
         if user is None:
-            return Response({
-                "message": "user not found"
-            }, status=status.HTTP_400_BAD_REQUEST)
+            response_data = {
+                "code": "A005_1",
+                "status": 400,
+                "message": "회원 정보를 찾을 수 없습니다."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /members 400 Member information not found')
+            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
         if not user.is_active:
-            return Response({
-                "message": "user is inactive"
-            }, status=status.HTTP_400_BAD_REQUEST)
+            response_data = {
+                "code": "A005_2",
+                "status": 400,
+                "message": "사용자의 계정이 비활성화되었습니다."
+            }
+            logger.warning(f'[{current_time}] {client_ip} - POST /members 400 User account is deactivated')
+            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         access_token = generate_access_token(user)
 
-        return Response(
-            {
-                'access_token': access_token,
-            }
-        )
+        response_data = {
+            'access_token': access_token,
+            "code": "A005",
+            "status": 200,
+            "message": "Access Token 재발급 성공"
+        }
+        logger.info(f'[{current_time}] {client_ip} - POST /refresh_token 200 Access token reissued successfully')
+        return Response(data=response_data, status=status.HTTP_200_OK)
 
 
 
@@ -502,15 +727,19 @@ class KakaoPayment(ApiAuthMixin, APIView):
             302: openapi.Response(
                 description='결제 페이지로 리다이렉트',
                 examples={
-                    'application/json': {
-                        "message": "결제 요청 성공"
+                    "application/json": {
+                        "code": "A009",
+                        "status": 302,
+                        "message": "결제 요청 성공",
                     }
                 }
             ),
             400: openapi.Response(
                 description='결제 요청 실패',
                 examples={
-                    'application/json': {
+                    "application/json": {
+                        "code": "A009_1",
+                        "status": 400,
                         "message": "결제 요청 실패"
                     }
                 }
@@ -518,6 +747,8 @@ class KakaoPayment(ApiAuthMixin, APIView):
         }
     )
     def post(self, request, *args, **kwargs):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         credits = request.data.get('credits')
         price = request.data.get('price')
         user = request.user
@@ -529,14 +760,18 @@ class KakaoPayment(ApiAuthMixin, APIView):
 
         if success:
             response_data = {
-                "message": "결제 요청 성공"
+                "code": "A009",
+                "status": 302,
+                "message": "결제 요청 성공",
+                "next_redirect_pc_url": (ready_process["next_redirect_pc_url"])
             }
-            response = redirect(ready_process["next_redirect_pc_url"])
-            return response
+            logger.info(f'[{current_time}] {client_ip} - POST /payment 302 Payment request successful')
+            return Response(data=response_data, status=status.HTTP_302_FOUND)
         else:
             response_data = {
-                "message": "결제 요청 실패"
+                 "code": "A009_1",
+                 "status": 400,
+                 "message": "결제 요청 실패"
             }
-            redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
-            response = redirect(redirect_uri)
-            return response
+            logger.warning(f'[{current_time}] {client_ip} - POST /payment 400 Payment request failed')
+            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)

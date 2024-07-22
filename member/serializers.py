@@ -63,10 +63,23 @@ class RegisterSerializer(serializers.Serializer):
         return user
 
 class MemberDetailSerializer(serializers.ModelSerializer):
+    country = serializers.SerializerMethodField()
+    country_id = serializers.IntegerField(write_only=True, required=False)
     class Meta:
         model = Member
-        fields = ['username', 'email', 'name', 'nickname', 'profile_image', 'comment', 'country', 'birthday', 'sex', 'youtube_account', 'instagram_account']
+        fields = ['username', 'email', 'name', 'nickname', 'profile_image', 'comment', 'country', 'country_id', 'birthday', 'sex', 'youtube_account', 'instagram_account']
         read_only_fields = ['username']
+
+    def get_country(self, obj):
+        return obj.country.name
+    def update(self, instance, validated_data):
+        country_id = validated_data.pop('country_id', None)
+        if country_id is not None:
+            country = Country.objects.filter(id=country_id).first()
+            if country:
+                instance.country = country
+        return super().update(instance, validated_data)
+
 
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:
