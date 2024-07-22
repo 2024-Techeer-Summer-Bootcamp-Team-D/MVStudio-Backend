@@ -38,7 +38,7 @@ def suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject):
     }
     data = {
         "prompt": lyrics,
-        "tags": f"{genre_names_str}, {instruments_str}, {tempo}, {vocal}",
+        "tags": f"Under 60 seconds, {genre_names_str}, {instruments_str}, {tempo}, {vocal} vocal, short music",
         "custom_mode": True,
         "title": subject
     }
