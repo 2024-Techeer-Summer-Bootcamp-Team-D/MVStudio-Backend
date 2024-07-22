@@ -201,6 +201,13 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 required=False
             ),
             openapi.Parameter(
+                'email',
+                openapi.IN_FORM,
+                description="Email",
+                type=openapi.TYPE_STRING,
+                required=False
+            ),
+            openapi.Parameter(
                 'profile_image',
                 openapi.IN_FORM,
                 description="Profile image file",
