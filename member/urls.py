@@ -6,7 +6,7 @@ from .callback import *
 
 
 urlpatterns = [
-    path('', MemberUsernameView.as_view(), name='member-list'),
+    path('', MemberInfoView.as_view(), name='member-info'),
     path('/sign-up', UserCreateApi.as_view(), name='member-create'),
     path('/login', LoginApi.as_view(), name='login'),
     path('/logout', LogoutApi.as_view(), name='login'),
