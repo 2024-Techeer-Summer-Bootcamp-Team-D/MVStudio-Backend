@@ -747,6 +747,8 @@ class KakaoPayment(ApiAuthMixin, APIView):
         }
     )
     def post(self, request, *args, **kwargs):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         credits = request.data.get('credits')
         price = request.data.get('price')
         user = request.user
@@ -763,6 +765,7 @@ class KakaoPayment(ApiAuthMixin, APIView):
                 "message": "결제 요청 성공",
                 "next_redirect_pc_url": (ready_process["next_redirect_pc_url"])
             }
+            logger.info(f'[{current_time}] {client_ip} - POST /payment 302 Payment request successful')
             return Response(data=response_data, status=status.HTTP_302_FOUND)
         else:
             response_data = {
@@ -770,4 +773,5 @@ class KakaoPayment(ApiAuthMixin, APIView):
                  "status": 400,
                  "message": "결제 요청 실패"
             }
+            logger.warning(f'[{current_time}] {client_ip} - POST /payment 400 Payment request failed')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
