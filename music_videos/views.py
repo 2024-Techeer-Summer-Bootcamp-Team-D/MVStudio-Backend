@@ -19,7 +19,7 @@ from datetime import datetime
 import logging
 import openai
 import re
-from django.db.models import Case, When
+from django.db.models import Case, When , Q
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
@@ -389,11 +389,9 @@ class MusicVideoView(ApiAuthMixin, APIView):
         if sort:
             if (sort == 'countries'):
                 country = user.country
-                print(country)
                 members = Member.objects.filter(country=country)
-                print(members)
                 queryset = queryset.filter(username__in=members).order_by('-views')
-                print(queryset)
+
 
             elif (sort == 'ages'):
                 current_year = datetime.now().year
@@ -404,13 +402,13 @@ class MusicVideoView(ApiAuthMixin, APIView):
                     members = Member.objects.filter(birthday__year__gte=current_year - 19)
                     queryset = queryset.filter(username__in=members).order_by('-views')
                 elif age < 30:
-                    members = Member.objects.filter(birthday__year__gte=current_year - 29)
+                    members = Member.objects.filter(Q(birthday__year__gte=current_year - 29) & Q(birthday__year__lte=current_year - 20))
                     queryset = queryset.filter(username__in=members).order_by('-views')
                 elif age < 40:
-                    members = Member.objects.filter(birthday__year__gte=current_year - 39)
+                    members = Member.objects.filter(Q(birthday__year__gte=current_year - 39) & Q(birthday__year__lte=current_year - 30))
                     queryset = queryset.filter(username__in=members).order_by('-views')
                 elif age < 50:
-                    members = Member.objects.filter(birthday__year__gte=current_year - 49)
+                    members = Member.objects.filter(Q(birthday__year__gte=current_year - 49) & Q(birthday__year__lte=current_year - 40))
                     queryset = queryset.filter(username__in=members).order_by('-views')
                 else:
                     members = Member.objects.filter(birthday__year__lte=current_year - 50)
@@ -1021,7 +1019,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
     def post(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        member = request.user.username
+        member = request.user
 
         try:
             mv = MusicVideo.objects.get(id=mv_id)
@@ -1044,7 +1042,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             return Response(response_data, status=400)
 
         try:
-            history_test = History.objects.get(username=member, mv_id=mv)
+            history_test = History.objects.get(username=member.username, mv_id=mv)
             if history_test:
                 response_data = {
                     "history_id": history_test.id,
