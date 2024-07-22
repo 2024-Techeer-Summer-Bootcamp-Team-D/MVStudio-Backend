@@ -368,6 +368,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = request.user
         queryset = MusicVideo.objects.all()
 
         message = '뮤직비디오 정보 조회 성공'
@@ -381,11 +382,38 @@ class MusicVideoView(ApiAuthMixin, APIView):
             queryset = queryset.filter(username=username)
             message = f'사용자 뮤직비디오 정보 조회 성공'
         if sort:
-            if (sort=='countries'):
-                member = Member.objects.filter(username=username)
-                members = Member.objects.filter(country_id=member.country_id)
-                queryset = MusicVideo.objects.filter(username__in=members)
-            else:
+            if (sort == 'countries'):
+                country = user.country
+                print(country)
+                members = Member.objects.filter(country=country)
+                print(members)
+                queryset = queryset.filter(username__in=members).order_by('-views')
+                print(queryset)
+
+            elif (sort == 'ages'):
+                current_year = datetime.now().year
+                birth_date = user.birthday
+                birth_year = birth_date.year
+                age = current_year - birth_year
+                if age < 20:
+                    members = Member.objects.filter(birthday__year__gte=current_year - 19)
+                    queryset = queryset.filter(username__in=members).order_by('-views')
+                elif age < 30:
+                    members = Member.objects.filter(birthday__year__gte=current_year - 29)
+                    queryset = queryset.filter(username__in=members).order_by('-views')
+                elif age < 40:
+                    members = Member.objects.filter(birthday__year__gte=current_year - 39)
+                    queryset = queryset.filter(username__in=members).order_by('-views')
+                elif age < 50:
+                    members = Member.objects.filter(birthday__year__gte=current_year - 49)
+                    queryset = queryset.filter(username__in=members).order_by('-views')
+                else:
+                    members = Member.objects.filter(birthday__year__lte=current_year - 50)
+                    queryset = queryset.filter(username__in=members).order_by('-views')
+
+
+
+        else:
                 queryset = queryset.order_by(f'-{sort}')
                 message = f"뮤직비디오 {sort}순 정보 조회 성공"
 
