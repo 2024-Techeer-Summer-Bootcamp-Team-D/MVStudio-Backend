@@ -11,12 +11,15 @@ from datetime import datetime
 import json
 import time
 from moviepy.editor import AudioFileClip, VideoFileClip, concatenate_videoclips, vfx
+from moviepy.decorators import apply_to_audio, apply_to_mask, requires_duration
 import requests
 import tempfile
 import logging
 import os
 from io import BytesIO
 from PIL import Image
+import numpy as np
+import math
 
 logger = logging.getLogger(__name__)
 @app.task
@@ -90,7 +93,12 @@ def suno_music(genre_names_str, instruments_str, tempo, vocal, lyrics, subject):
     else:
         return {"error": "Failed to create Suno task", "status_code": response.status_code}
 
-
+@requires_duration
+@apply_to_mask
+@apply_to_audio
+def time_mirror(clip):
+    duration_per_frame = 1 / clip.fps
+    return clip.fl_time(lambda t: np.max(clip.duration - t - duration_per_frame, 0), keep_duration=True)
 def create_reversed_video_clip(url, clip_count, last_clip_size):
     # URL에서 비디오 파일 다운로드
     response = requests.get(url)
@@ -104,7 +112,7 @@ def create_reversed_video_clip(url, clip_count, last_clip_size):
     video = VideoFileClip(temp_video_path)
 
     # 비디오를 역재생
-    reversed_video = video.fx(vfx.time_mirror)
+    reversed_video = time_mirror(video)
 
     # 기본 재생 클립과 역재생 클립을 이어붙임
     plus_clip = concatenate_videoclips([video, reversed_video])
@@ -174,12 +182,14 @@ def create_video(line, style):
         response = requests.get(url, headers=headers).json()
         if (response['status'] == 'success'):
             break
+        elif(response['status'] == 'failed'):
+            return False
     return response['url']
 
 
 
 @app.task(queue='final_queue')
-def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids, tempo, username):
+def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids, tempo, username, style_id):
     audio_url = results[0][0]
     duration = results[0][1]
     urls = results[1:]
@@ -250,14 +260,17 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
             "lyrics": lyrics,
             "genres_ids": genres_ids,
             "instruments_ids": instruments_ids,
-            "tempo": tempo
+            "tempo": tempo,
+            "style_id": style_id
         }
         # 뮤직비디오 및 벌스 객체 생성
         serializer = MusicVideoSerializer(data=data)
+
         if serializer.is_valid():
             serializer.save()
             logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
             return
+        return False
     else:
         os.remove(audio_filename)
         os.remove(video_filename)

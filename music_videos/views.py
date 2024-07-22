@@ -18,6 +18,7 @@ from celery.result import AsyncResult
 from datetime import datetime
 import logging
 import openai
+import re
 from django.db.models import Case, When
 
 from elasticsearch_dsl.query import MultiMatch
@@ -243,9 +244,13 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 텍스트를 줄 단위로 나누기
-            lines = lyrics_eng.strip().split('\n')
-            # [Verse]와 같은 태그를 제외하고 저장
-            filtered_lines = [line for line in lines if not line.startswith('[') and line.strip()]
+            lines = lyrics_eng.strip().split('<br />')
+
+            # [Verse]와 같은 태그를 제외하고 저장, 그리고 모든 기호 제거
+            filtered_lines = [
+                re.sub(r'[^A-Za-z0-9\s]', '', re.sub(r'\[.*?\]', '', line))
+                for line in lines if not line.startswith('[') and line.strip()
+            ]
 
             music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
 
@@ -256,7 +261,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
             music_video_task = chord(
                 header=[music_task] + video_tasks.tasks,
                 body=mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids,
-                                 tempo, username)
+                                 tempo, username, style_id)
             )
             task_id = music_video_task.apply_async().id
 

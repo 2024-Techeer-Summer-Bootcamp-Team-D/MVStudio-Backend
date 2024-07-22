@@ -1,9 +1,8 @@
 # mv_creator/serializers.py
-
-from .models import History, Style
-
 from rest_framework import serializers
-from .models import MusicVideo, Genre, Instrument
+from .models import MusicVideo, Genre, Instrument, History, Style
+from member.models import Member
+
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -45,8 +44,10 @@ class MusicVideoSerializer(serializers.ModelSerializer):
         genres = validated_data.pop('genres_ids')
         instruments = validated_data.pop('instruments_ids')
         style = validated_data.pop('style_id')
+        username = validated_data.pop('username')
+        user = Member.objects.filter(username=username).first()
         try:
-            music_video = MusicVideo.objects.create(**validated_data, style=style)
+            music_video = MusicVideo.objects.create(**validated_data, style_id=style, username=user)
             music_video.genre_id.set(genres)
             music_video.instrument_id.set(instruments)
         except Exception as e:
