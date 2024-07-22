@@ -1,7 +1,6 @@
 from django.db import models
 from member.models import Member
 
-
 class Genre(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)
@@ -45,7 +44,6 @@ class MusicVideo(models.Model):
     username = models.ForeignKey(Member, to_field='username', on_delete=models.CASCADE)
     subject = models.CharField(max_length=200)
     lyrics = models.CharField(max_length=2000)
-    lyrics_eng = models.CharField(max_length=2000)
     genre_id = models.ManyToManyField(Genre, through='MusicVideoGenre')
     instrument_id = models.ManyToManyField(Instrument, through='MusicVideoInstrument', blank=True)
     style_id = models.ForeignKey(Style, on_delete=models.SET_NULL, db_column='style_id', null=True, blank=True)
