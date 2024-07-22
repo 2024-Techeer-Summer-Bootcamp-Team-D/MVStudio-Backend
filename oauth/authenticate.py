@@ -34,7 +34,10 @@ class SafeJWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed('access_token expired')
         except IndexError:
             raise exceptions.AuthenticationFailed('Token prefix missing')
-
+        except jwt.InvalidTokenError:
+            raise exceptions.AuthenticationFailed('Invalid access token')
+        except Exception as e:
+            raise exceptions.AuthenticationFailed(f'Authentication failed: {str(e)}')
         return self.authenticate_credentials(request, payload['user_id'])
 
     def authenticate_credentials(self, request, key):
