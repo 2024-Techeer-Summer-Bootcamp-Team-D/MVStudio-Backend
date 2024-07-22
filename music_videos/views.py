@@ -18,6 +18,7 @@ from celery.result import AsyncResult
 from datetime import datetime
 import logging
 import openai
+import re
 from django.db.models import Case, When
 
 from elasticsearch_dsl.query import MultiMatch
@@ -86,7 +87,7 @@ class CreateLyricsView(ApiAuthMixin, APIView):
             prompt = (
                 f"Create song lyrics based on the keyword '{subject}'. "
                 f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
-                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and At least 2 sentences per line(very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
+                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and contain one sentence per line (very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
                 f"---(Original Lyrics)---<br /><br />"
                 f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
@@ -243,9 +244,13 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 텍스트를 줄 단위로 나누기
-            lines = lyrics_eng.strip().split('\n')
-            # [Verse]와 같은 태그를 제외하고 저장
-            filtered_lines = [line for line in lines if not line.startswith('[') and line.strip()]
+            lines = lyrics_eng.strip().split('<br />')
+
+            # [Verse]와 같은 태그를 제외하고 저장, 그리고 모든 기호 제거
+            filtered_lines = [
+                re.sub(r'[^A-Za-z0-9\s]', '', re.sub(r'\[.*?\]', '', line))
+                for line in lines if not line.startswith('[') and line.strip()
+            ]
 
             music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
 
@@ -256,7 +261,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
             music_video_task = chord(
                 header=[music_task] + video_tasks.tasks,
                 body=mv_create.s(client_ip, current_time, subject, language, vocal, lyrics, genres_ids, instruments_ids,
-                                 tempo, username)
+                                 tempo, username, style_id)
             )
             task_id = music_video_task.apply_async().id
 
