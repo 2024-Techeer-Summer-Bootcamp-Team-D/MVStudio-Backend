@@ -18,6 +18,8 @@ from music_videos.models import History, MusicVideo
 from datetime import datetime
 import logging
 
+logger = logging.getLogger(__name__)
+
 class DailyChartView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
         operation_summary="날짜별 조회수 통계 차트 조회 API",
@@ -106,7 +108,7 @@ class DailyChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            logger.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -144,7 +146,7 @@ class DailyChartView(ApiAuthMixin, APIView):
                     } for date, views in daily_views.items()
                 ],
             }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -174,7 +176,7 @@ class DailyChartView(ApiAuthMixin, APIView):
                     } for date, views in daily_views.items()
                 ],
         }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -249,7 +251,7 @@ class GenderChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            logger.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -291,7 +293,7 @@ class GenderChartView(ApiAuthMixin, APIView):
                     } for item in gender_list
                 ],
             }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -322,7 +324,7 @@ class GenderChartView(ApiAuthMixin, APIView):
                     } for item in gender_list
                 ],
         }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -419,7 +421,7 @@ class CountryChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            logger.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -465,7 +467,7 @@ class CountryChartView(ApiAuthMixin, APIView):
                     } for item in country_list
                 ],
             }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -497,7 +499,7 @@ class CountryChartView(ApiAuthMixin, APIView):
                 } for item in country_list
             ],
         }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -572,7 +574,7 @@ class AgeChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logging.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
+            logger.warning(f'WARNING {client_ip} {current_time} /music_videos 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -627,7 +629,7 @@ class AgeChartView(ApiAuthMixin, APIView):
                     } for item in age_list
                 ],
             }
-            logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
+            logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -658,6 +660,6 @@ class AgeChartView(ApiAuthMixin, APIView):
                 } for item in age_list
             ],
         }
-        logging.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
+        logger.info(f'INFO {client_ip} {current_time} GET /music_videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
