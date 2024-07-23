@@ -8,9 +8,9 @@ from django.shortcuts import redirect
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
-from .mixins import PublicApiMixin
+from .mixins import PublicApiMixin, ApiAuthMixin
 from .utils import social_user_get_or_create
-from .services import google_get_access_token, google_get_user_info
+from .services import google_get_access_token, google_get_user_info, google_upload_youtube
 from .authenticate import jwt_login
 
 User = get_user_model()
@@ -37,7 +37,9 @@ class LoginGoogleCallbackView(PublicApiMixin, APIView):
         code = request.GET.get('code')
         google_token_api = "https://oauth2.googleapis.com/token"
 
-        access_token = google_get_access_token(google_token_api, code)
+        redirection_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/login/google/callback"
+
+        access_token = google_get_access_token(google_token_api, code, redirection_uri)
         user_data = google_get_user_info(access_token=access_token)
 
         profile_data = {
@@ -56,6 +58,41 @@ class LoginGoogleCallbackView(PublicApiMixin, APIView):
         else:
             response = redirect(settings.BASE_FRONTEND_URL+'main')
         response = jwt_login(response=response, user=member)
+        return response
+
+
+@swagger_auto_schema(auto_schema=None)
+class YoutubeUploadGoogleView(ApiAuthMixin, APIView):
+    def post(self, request, *args, **kwargs):
+        app_key = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+        scope = "https://www.googleapis.com/auth/youtube " + \
+                "https://www.googleapis.com/auth/youtube.readonly " + \
+                "https://www.googleapis.com/auth/youtube.upload"
+
+        mv_id = kwargs.get('mv_id')
+
+        redirect_uri = settings.BASE_BACKEND_URL + f"api/v1/oauth/youtube/callback"
+        google_auth_api = "https://accounts.google.com/o/oauth2/v2/auth"
+
+        response = redirect(
+            f"{google_auth_api}?client_id={app_key}&response_type=code&redirect_uri={redirect_uri}&scope={scope}&state={mv_id}"
+        )
+
+        return response
+
+@swagger_auto_schema(auto_schema=None)
+class YoutubeUploadGoogleCallbackView(PublicApiMixin, APIView):
+    def get(self, request, *args, **kwargs):
+        code = request.GET.get('code')
+        mv_id = request.GET.get('state')
+        google_token_api = "https://oauth2.googleapis.com/token"
+
+        redirection_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube/callback"
+
+        access_token = google_get_access_token(google_token_api, code, redirection_uri)
+        google_upload_youtube(access_token=access_token, mv_id=mv_id)
+        response = redirect(settings.BASE_FRONTEND_URL+'main')
+
         return response
 
 
