@@ -97,8 +97,10 @@ class YoutubeUploadGoogleCallbackView(PublicApiMixin, APIView):
 
 
 @swagger_auto_schema(auto_schema=None)
-class AuthYoutubeView(APIView):
+class AuthYoutubeView(PublicApiMixin, APIView):
     def get(self, request):
+
+        redirect_uri = settings.BASE_BACKEND_URL + f"api/v1/oauth/youtube-channel/callback"
         # OAuth 2.0 플로우 설정
         client_config = {
             "web": {
@@ -106,14 +108,14 @@ class AuthYoutubeView(APIView):
                 "client_secret": settings.SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": "http://localhost:8000/oauth/youtube/callback/"
+                "redirect_uris": [redirect_uri]
             }
         }
         flow = Flow.from_client_config(
             client_config,
             scopes=['https://www.googleapis.com/auth/youtube.readonly'],
-            redirect_uri="http://localhost:8000/oauth/youtube/callback/"
         )
+        flow.redirect_uri = redirect_uri
 
         # 인증 URL 생성 및 리디렉션
         authorization_url, state = flow.authorization_url(
@@ -125,24 +127,25 @@ class AuthYoutubeView(APIView):
 
 
 @swagger_auto_schema(auto_schema=None)
-class AuthYoutubeCallbackView(APIView):
+class AuthYoutubeCallbackView(PublicApiMixin, APIView):
     def get(self, request):
         state = request.session['state']
+        redirect_uri = settings.BASE_BACKEND_URL + f"api/v1/oauth/youtube-channel/callback"
         client_config = {
             "web": {
                 "client_id": settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
                 "client_secret": settings.SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["http://localhost:8000/oauth/youtube/callback/"]
+                "redirect_uris": [redirect_uri]
             }
         }
         flow = Flow.from_client_config(
             client_config,
             scopes=['https://www.googleapis.com/auth/youtube.readonly'],
             state=state,
-            redirect_uri="http://localhost:8000/oauth/youtube/callback/"
         )
+        flow.redirect_uri = redirect_uri
 
         # 사용자 인증 코드 처리
         authorization_response = request.build_absolute_uri()
@@ -161,6 +164,6 @@ class AuthYoutubeCallbackView(APIView):
         channel_url = "https://www.youtube.com/channel/" + response['items'][0]['id']
 
         # 프론트엔드로 리디렉션
-        redirect_url = f"http://localhost:4137/edit?youtube_url={channel_url}"
+        redirect_url = f"{settings.BASE_FRONTEND_URL}users?youtube_url={channel_url}"
 
         return redirect(redirect_url)
