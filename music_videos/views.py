@@ -423,7 +423,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 else:
                     members = Member.objects.filter(birthday__year__lte=current_year - 50)
                     queryset = queryset.filter(username__in=members).order_by('-views')
-        else:
+            else:
                 queryset = queryset.order_by(f'-{sort}')
                 message = f"뮤직비디오 {sort}순 정보 조회 성공"
 
