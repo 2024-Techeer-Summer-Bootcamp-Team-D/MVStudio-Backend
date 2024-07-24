@@ -97,12 +97,12 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
     instruments = serializers.SerializerMethodField()
     style_name = serializers.SerializerMethodField()
     profile_image = serializers.SerializerMethodField()
+    lyrics = serializers.SerializerMethodField()
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'subject', 'cover_image', 'mv_file', 'member_name', 'profile_image', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
+            'id', 'subject', 'cover_image', 'mv_file', 'lyrics', 'member_name', 'profile_image', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
         ]
-
     def get_member_name(self, obj):
         return obj.username.nickname
     def get_style_name(self, obj):
@@ -115,6 +115,12 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
         return []
     def get_profile_image(self, obj):
         return obj.username.profile_image
+    def get_lyrics(self, obj):
+        lyrics = obj.lyrics
+        lyrics = lyrics.replace("[Verse]<br />", "")
+        lyrics = lyrics.replace("[Outro]<br />", "")
+        lyrics = lyrics.replace("<br />[End]<br /><br />", "")
+        return lyrics
 
 class HistorySerializer(serializers.ModelSerializer):
     class Meta:
