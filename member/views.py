@@ -327,9 +327,10 @@ class MemberDetailView(ApiAuthMixin, APIView):
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = User.objects.filter(username=username).first()
-        except Member.DoesNotExist:
+
+        member = User.objects.filter(username=username).first()
+
+        if not member:
             response_data = {
                 "code": "A006_1",
                 "status": 404,
@@ -444,9 +445,10 @@ class MemberDetailView(ApiAuthMixin, APIView):
     def patch(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            member = User.objects.filter(username=username).first()
-        except Member.DoesNotExist:
+
+        member = User.objects.filter(username=username).first()
+
+        if not member:
             response_data = {
                 "code": "A007_1",
                 "status": 404,
