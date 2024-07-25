@@ -137,6 +137,9 @@ class KakaoPayClient(object):
                 user = User.objects.filter(username=request_user).first()
                 user.credits += quantity
 
+                # 결제가 완료되면 유저의 크레딧을 증가
+                # user.save()
+
                 payment_req.status = PAY_STATUS_SUCCESS
                 payment_req.save()
 

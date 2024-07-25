@@ -726,12 +726,12 @@ class KakaoPayment(ApiAuthMixin, APIView):
             }
         ),
         responses={
-            302: openapi.Response(
+            201: openapi.Response(
                 description='결제 페이지로 리다이렉트',
                 examples={
                     "application/json": {
                         "code": "A009",
-                        "status": 302,
+                        "status": 201,
                         "message": "결제 요청 성공",
                     }
                 }
@@ -763,12 +763,12 @@ class KakaoPayment(ApiAuthMixin, APIView):
         if success:
             response_data = {
                 "code": "A009",
-                "status": 302,
+                "status": 201,
                 "message": "결제 요청 성공",
                 "next_redirect_pc_url": (ready_process["next_redirect_pc_url"])
             }
-            logger.info(f'[{current_time}] {client_ip} POST /payment 302 Payment request successful')
-            return Response(data=response_data, status=status.HTTP_302_FOUND)
+            logger.info(f'[{current_time}] {client_ip} POST /payment 201 Payment request successful')
+            return Response(data=response_data, status=status.HTTP_201_CREATED)
         else:
             response_data = {
                  "code": "A009_1",
