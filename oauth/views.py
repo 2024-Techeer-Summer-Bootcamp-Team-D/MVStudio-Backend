@@ -99,8 +99,8 @@ class YoutubeUploadGoogleCallbackView(PublicApiMixin, APIView):
 @swagger_auto_schema(auto_schema=None)
 class AuthYoutubeView(PublicApiMixin, APIView):
     def get(self, request):
+        redirect_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube-channel/callback"
 
-        redirect_uri = settings.BASE_BACKEND_URL + f"api/v1/oauth/youtube-channel/callback"
         # OAuth 2.0 플로우 설정
         client_config = {
             "web": {
@@ -111,9 +111,15 @@ class AuthYoutubeView(PublicApiMixin, APIView):
                 "redirect_uris": [redirect_uri]
             }
         }
+        
         flow = Flow.from_client_config(
             client_config,
-            scopes=['https://www.googleapis.com/auth/youtube.readonly'],
+            scopes=[
+                'https://www.googleapis.com/auth/youtube.readonly',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'openid',
+                'https://www.googleapis.com/auth/userinfo.profile'
+            ],
         )
         flow.redirect_uri = redirect_uri
 
@@ -129,8 +135,12 @@ class AuthYoutubeView(PublicApiMixin, APIView):
 @swagger_auto_schema(auto_schema=None)
 class AuthYoutubeCallbackView(PublicApiMixin, APIView):
     def get(self, request):
-        state = request.session['state']
-        redirect_uri = settings.BASE_BACKEND_URL + f"api/v1/oauth/youtube-channel/callback"
+        state = request.session.get('state')
+        if not state:
+            return Response({"error": "State parameter is missing from session."}, status=status.HTTP_400_BAD_REQUEST)
+
+        redirect_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube-channel/callback"
+
         client_config = {
             "web": {
                 "client_id": settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
@@ -140,30 +150,41 @@ class AuthYoutubeCallbackView(PublicApiMixin, APIView):
                 "redirect_uris": [redirect_uri]
             }
         }
+        
         flow = Flow.from_client_config(
             client_config,
-            scopes=['https://www.googleapis.com/auth/youtube.readonly'],
+            scopes=[
+                'https://www.googleapis.com/auth/youtube.readonly',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'openid',
+                'https://www.googleapis.com/auth/userinfo.profile'
+            ],
             state=state,
         )
         flow.redirect_uri = redirect_uri
 
         # 사용자 인증 코드 처리
         authorization_response = request.build_absolute_uri()
-        flow.fetch_token(authorization_response=authorization_response)
+        try:
+            flow.fetch_token(authorization_response=authorization_response)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         credentials = flow.credentials
 
-        # YouTube API 클라이언트 생성
-        youtube = build('youtube', 'v3', credentials=credentials)
-        response = youtube.channels().list(
-            mine=True,
-            part='snippet'
-        ).execute()
+        try:
+            # YouTube API 클라이언트 생성
+            youtube = build('youtube', 'v3', credentials=credentials)
+            response = youtube.channels().list(
+                mine=True,
+                part='snippet'
+            ).execute()
 
-        # 유튜브 채널 URL 생성
-        channel_url = "https://www.youtube.com/channel/" + response['items'][0]['id']
+            # 유튜브 채널 URL 생성
+            channel_url = "https://www.youtube.com/channel/" + response['items'][0]['id']
+        except Exception as e:
+            return Response({"error": "Failed to retrieve YouTube channel information."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 프론트엔드로 리디렉션
         redirect_url = f"{settings.BASE_FRONTEND_URL}users?youtube_url={channel_url}"
-
         return redirect(redirect_url)
