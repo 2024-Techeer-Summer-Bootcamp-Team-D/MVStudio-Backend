@@ -1048,6 +1048,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             if history_test:
                 response_data = {
                     "history_id": history_test.id,
+                    "current_play_time": history_test.current_play_time,
                     "code": "M008_4",
                     "status": 409,
                     "message": "이미 시청한 기록이 있습니다."
