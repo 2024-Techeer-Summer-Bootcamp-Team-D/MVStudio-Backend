@@ -1055,8 +1055,6 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 logger.warning(f'INFO {client_ip} {current_time} /music_video/histories/create 409 already exists')
                 return Response(response_data, status=status.HTTP_409_CONFLICT)
         except:
-            pass
-        try:
             histories = History.objects.create(
                 username=member,
                 mv_id=mv,
@@ -1074,14 +1072,6 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             mv.save()
             logger.info(f'INFO {client_ip} {current_time} GET /music_video/histories/create 201 success')
             return Response(response_data, status=201)
-        except Exception as e:
-            logger.error(f'ERROR {client_ip} {current_time} GET /music_video/histories/create 500 failed: {str(e)}')
-            response_data = {
-                "code": "M008_5",
-                "status": 500,
-                "message": "서버 오류로 시청 기록을 추가할 수 없습니다.",
-            }
-            return Response(response_data, status=500)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -1111,11 +1101,18 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
             404: openapi.Response(
                 description="시청 기록을 찾을 수 없습니다.",
                 examples={
-                    "application/json": {
-                        "code": "M009_1",
-                        "status": 404,
-                        "message": "시청 기록을 찾을 수 없습니다."
-                    }
+                    "application/json": [
+                        {
+                            "code": "M009_1",
+                            "status": 404,
+                            "message": "시청 기록을 찾을 수 없습니다."
+                        },
+                        {
+                            "code": "M009_2",
+                            "status": 404,
+                            "message": "사용자의 시청 기록이 아닙니다."
+                        }
+                    ]
                 }
             ),
         }
@@ -1123,8 +1120,19 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
     def patch(self, request, history_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        member = request.user
         try:
             histories = History.objects.get(id=history_id)
+            if not histories.username == member:
+                response_data = {
+                    "code": "M009_2",
+                    "status": 404,
+                    "message": "사용자의 시청 기록이 아닙니다."
+                }
+                logger.warning(
+                    f'WARNING {client_ip} {current_time} PATCH /music-videos/histories/update/{history_id} 404 Not Found')
+                return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+
             current_play_time = request.data.get('current_play_time', histories.current_play_time)
             histories.current_play_time = current_play_time
             # histories.updated_at = datetime.now()
@@ -1148,15 +1156,6 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
                 f'WARNING {client_ip} {current_time} PATCH /music-videos/histories/update/{history_id} 404 Not Found')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
-        except Exception as e:
-            response_data = {
-                "code": "M009_2",
-                "status": 500,
-                "message": "서버 오류로 시청 기록을 갱신할 수 없습니다.",
-            }
-            logger.error(
-                f'ERROR {client_ip} {current_time} PATCH /music-videos/histories/update/{history_id} 500 Internal Server Error')
-            return Response(response_data, status=500)
 
 class HistoryDetailView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -1212,9 +1211,10 @@ class HistoryDetailView(ApiAuthMixin, APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         username = request.user.username
-        try:
-            member = Member.objects.filter(username=username).first()
-        except Member.DoesNotExist:
+
+        member = Member.objects.filter(username=username).first()
+
+        if not member:
             response_data = {
                 "code": "M010_1",
                 "status": 404,
