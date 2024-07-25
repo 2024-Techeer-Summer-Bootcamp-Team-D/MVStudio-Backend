@@ -3,6 +3,7 @@
 from music_videos.models import MusicVideo
 from config.celery import app
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 from .serializers import MusicVideoSerializer
 from .s3_utils import upload_file_to_s3
@@ -19,7 +20,8 @@ import os
 from io import BytesIO
 from PIL import Image
 import numpy as np
-import math
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 @app.task
@@ -268,6 +270,9 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
 
         if serializer.is_valid():
             serializer.save()
+            user = User.objects.filter(username=username).first()
+            user.credits -= 20
+            user.save()
             logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
             return
         return False
