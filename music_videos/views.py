@@ -215,6 +215,15 @@ class MusicVideoView(ApiAuthMixin, APIView):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             # Request Parameter 값 가져오기
+            user = request.user
+            if(user.credits<20):
+                response_data = {
+                    "code": "M002_3",
+                    "status": 400,
+                    "message": "크레딧이 부족합니다."
+                }
+                logger.error(f'{client_ip} POST /music-videos 400 not enough credits')
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
             username = request.user.username
             subject = request.data['subject']
             vocal = request.data['vocal']

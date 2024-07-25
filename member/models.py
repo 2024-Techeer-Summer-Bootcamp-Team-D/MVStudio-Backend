@@ -50,7 +50,7 @@ class Member(AbstractUser):
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', null=True, blank=True)
     youtube_account = models.CharField(max_length=200, null=True, blank=True)
     instagram_account = models.CharField(max_length=200, null=True, blank=True)
-    credits = models.IntegerField(null=True, blank=True, default=0)
+    credits = models.IntegerField(null=True, blank=True, default=20)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
