@@ -70,7 +70,6 @@ class CreateLyricsView(ApiAuthMixin, APIView):
     )
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
             subject = request.data['subject']
@@ -87,7 +86,7 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                     "status": 400,
                     "message": "필수 조건이 누락되었습니다."
                 }
-                logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/lyrics 400 missing required fields')
+                logger.error(f'{client_ip} POST /music-videos/lyrics 400 missing required fields')
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             prompt = (
@@ -160,10 +159,10 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                 "status": 201,
                 "message": "가사 생성 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} POST /music-videos/lyrics 201 lyrics created')
+            logger.info(f'{client_ip} POST /music-videos/lyrics 201 lyrics created')
             return Response(response_data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/lyrics 500 {str(e)}')
+            logger.error(f'{client_ip} POST /music-videos/lyrics 500 {str(e)}')
             return Response({
                 "code": "M007_2",
                 "status": 500,
@@ -248,7 +247,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                     "status": 400,
                     "message": "필수 조건이 누락되었습니다."
                 }
-                logger.error(f'ERROR {client_ip} {current_time} POST /music-videos 400 missing required fields')
+                logger.error(f'{client_ip} POST /music-videos 400 missing required fields')
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 텍스트를 줄 단위로 나누기
@@ -282,10 +281,10 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 "message": "뮤직비디오 생성 요청 성공",
                 "task_id": task_id
             }
-            logger.info(f'INFO {client_ip} {current_time} PATCH /music-videos 201 music video created')
+            logger.info(f'{client_ip} PATCH /music-videos 201 music video created')
             return Response(response_data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            logger.error(f'ERROR {client_ip} {current_time} POST /music-videos 500 {str(e)}')
+            logger.error(f'{client_ip} POST /music-videos 500 {str(e)}')
             return Response({
                 "code": "M002_2",
                 "status": 500,
@@ -383,7 +382,6 @@ class MusicVideoView(ApiAuthMixin, APIView):
     )
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         user = request.user
         queryset = MusicVideo.objects.all()
 
@@ -430,7 +428,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "뮤직비디오를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /music-videos 404 does not existing')
+            logger.warning(f'{client_ip} GET /music-videos 404 does not existing')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         # 페이지네이션
@@ -455,7 +453,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 "last_page": not paginated_queryset.has_next()
             }
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /music-videos 200 views success')
+        logger.info(f'{client_ip} GET /music-videos 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 class MusicVideoDevelopView(APIView):
@@ -514,7 +512,6 @@ class MusicVideoDevelopView(APIView):
     )
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
             # 요청 데이터 가져오기
@@ -547,7 +544,7 @@ class MusicVideoDevelopView(APIView):
                     "status": 400,
                     "message": "필수 조건이 누락되었습니다."
                 }
-                logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/develop 400 missing required fields')
+                logger.error(f'{client_ip} POST /music-videos/develop 400 missing required fields')
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # 회원 정보 가져오기
@@ -586,32 +583,32 @@ class MusicVideoDevelopView(APIView):
                 "status": 201,
                 "message": "뮤직비디오 생성 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} POST /music-videos/develop 201 success')
+            logger.info(f'{client_ip} POST /music-videos/develop 201 success')
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Member.DoesNotExist:
-            logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/develop 400 Member with ID {username} does not exist')
+            logger.error(f'{client_ip} POST /music-videos/develop 400 Member with ID {username} does not exist')
             return Response({
                 "code": "M002_1",
                 "status": 400,
                 "message": f"잘못된 회원: {username}"
             }, status=status.HTTP_400_BAD_REQUEST)
         except Genre.DoesNotExist as e:
-            logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/develop 400 Genre does not exist: {str(e)}')
+            logger.error(f'{client_ip} POST /music-videos/develop 400 Genre does not exist: {str(e)}')
             return Response({
                 "code": "M002_1",
                 "status": 400,
                 "message": f"잘못된 장르 ID: {str(e)}"
             }, status=status.HTTP_400_BAD_REQUEST)
         except Instrument.DoesNotExist as e:
-            logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/develop 400 Instrument does not exist: {str(e)}')
+            logger.error(f'{client_ip} POST /music-videos/develop 400 Instrument does not exist: {str(e)}')
             return Response({
                 "code": "M002_1",
                 "status": 400,
                 "message": f"잘못된 악기 ID: {str(e)}"
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'ERROR {client_ip} {current_time} POST /music-videos/develop 500 {str(e)}')
+            logger.error(f'{client_ip} POST /music-videos/develop 500 {str(e)}')
             return Response({
                 "code": "M002_2",
                 "status": 500,
@@ -656,7 +653,6 @@ class MusicVideoManageView(ApiAuthMixin, APIView):
     )
     def get(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
@@ -665,7 +661,7 @@ class MusicVideoManageView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "뮤직비디오를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /music-videos/{mv_id} 404 does not existing')
+            logger.warning(f'{client_ip} GET /music-videos/{mv_id} 404 does not existing')
             return Response(response_data, status=404)
 
         serializer = MusicVideoDetailSerializer(music_video)
@@ -675,7 +671,7 @@ class MusicVideoManageView(ApiAuthMixin, APIView):
             "status": 200,
             "message": "뮤직비디오 상세 정보 조회 성공"
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /music-videos/{mv_id} 200 view success')
+        logger.info(f'{client_ip} GET /music-videos/{mv_id} 200 view success')
         return Response(response_data, status=200)
 
     @swagger_auto_schema(
@@ -711,7 +707,6 @@ class MusicVideoManageView(ApiAuthMixin, APIView):
     )
     def delete(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             music_video = MusicVideo.objects.get(id=mv_id)
         except MusicVideo.DoesNotExist:
@@ -720,7 +715,7 @@ class MusicVideoManageView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "해당 뮤직비디오를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} PATCH /music-videos/{mv_id} 404 does not existing')
+            logger.warning(f'{client_ip} PATCH /music-videos/{mv_id} 404 does not existing')
             return Response(response_data, status=404)
         music_video.is_deleted = True
         music_video.save()
@@ -731,7 +726,7 @@ class MusicVideoManageView(ApiAuthMixin, APIView):
             "message": "뮤직비디오 삭제 성공",
             "data": serializer.data
         }
-        logger.info(f'INFO {client_ip} {current_time} PATCH /music-videos/{mv_id} 200 delete success')
+        logger.info(f'{client_ip} PATCH /music-videos/{mv_id} 200 delete success')
         return Response(response_data, status=200)
 
 
@@ -786,7 +781,6 @@ class GenreListView(ApiAuthMixin, APIView):
     )
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             genres = Genre.objects.all()
             serializer = GenreSerializer(genres, many=True)
@@ -802,7 +796,7 @@ class GenreListView(ApiAuthMixin, APIView):
                 "status": 200,
                 "message": "장르 리스트 조회 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/genres 200 success')
+            logger.info(f'{client_ip} GET /music-videos/genres 200 success')
             return Response(response_data, status=200)
         except Exception as e:
             response_data = {
@@ -810,7 +804,7 @@ class GenreListView(ApiAuthMixin, APIView):
                 "status": 500,
                 "message": "장르 리스트를 불러올 수 없습니다."
             }
-            logger.error(f'ERROR {client_ip} {current_time} GET /music-videos/genres 500 failed : {e}')
+            logger.error(f'{client_ip} GET /music-videos/genres 500 failed : {e}')
             return Response(response_data, status=500)
 
 class InstrumentListView(ApiAuthMixin, APIView):
@@ -863,7 +857,6 @@ class InstrumentListView(ApiAuthMixin, APIView):
     )
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             instruments = Instrument.objects.all()
             serializer = InstrumentSerializer(instruments, many=True)
@@ -879,7 +872,7 @@ class InstrumentListView(ApiAuthMixin, APIView):
                 "status": 200,
                 "message": "악기 리스트 조회 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/instruments 200 success')
+            logger.info(f'{client_ip} GET /music-videos/instruments 200 success')
             return Response(response_data, status=200)
         except Exception as e:
             response_data = {
@@ -887,7 +880,7 @@ class InstrumentListView(ApiAuthMixin, APIView):
                 "status": 500,
                 "message": "악기 리스트를 불러올 수 없습니다."
             }
-            logger.error(f'ERROR {client_ip} {current_time} GET /music-videos/instruments 500 failed : {e}')
+            logger.error(f'{client_ip} GET /music-videos/instruments 500 failed : {e}')
             return Response(response_data, status=500)
 class StyleListView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -940,7 +933,6 @@ class StyleListView(ApiAuthMixin, APIView):
     )
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             styles = Style.objects.all()
             serializer = StyleSerializer(styles, many=True)
@@ -956,7 +948,7 @@ class StyleListView(ApiAuthMixin, APIView):
                 "status": 200,
                 "message": "스타일 리스트 조회 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/styles 200 success')
+            logger.info(f'{client_ip} GET /music-videos/styles 200 success')
             return Response(response_data, status=200)
         except Exception as e:
             response_data = {
@@ -964,7 +956,7 @@ class StyleListView(ApiAuthMixin, APIView):
                 "status": 500,
                 "message": "스타일 리스트를 불러올 수 없습니다."
             }
-            logger.error(f'ERROR {client_ip} {current_time} GET /music-videos/styles 500 failed : {e}')
+            logger.error(f'{client_ip} GET /music-videos/styles 500 failed : {e}')
             return Response(response_data, status=500)
 
 
@@ -1021,7 +1013,6 @@ class HistoryCreateView(ApiAuthMixin, APIView):
     )
     def post(self, request, mv_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         member = request.user
 
         try:
@@ -1032,7 +1023,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "뮤직 비디오를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} POST /music-videos/histories/create/{mv_id} 404 does not existing')
+            logger.warning(f'{client_ip} POST /music-videos/histories/create/{mv_id} 404 does not existing')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         if mv.username == member:
@@ -1041,7 +1032,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                 "status": 400,
                 "message": "사용자의 뮤직비디오입니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} POST /music-videos/histories/create/{mv_id} 400 the user\'s music video')
+            logger.warning(f'{client_ip} POST /music-videos/histories/create/{mv_id} 400 the user\'s music video')
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -1054,7 +1045,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
                     "status": 409,
                     "message": "이미 시청한 기록이 있습니다."
                 }
-                logger.warning(f'WARNING {client_ip} {current_time} /music-videos/histories/create/{mv_id} 409 already exists')
+                logger.warning(f'{client_ip} /music-videos/histories/create/{mv_id} 409 already exists')
                 return Response(response_data, status=status.HTTP_409_CONFLICT)
         except:
             histories = History.objects.create(
@@ -1072,7 +1063,7 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             mv.views += 1
             mv.recently_viewed += 1
             mv.save()
-            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/histories/create/{mv_id} 201 success')
+            logger.info(f'{client_ip} GET /music-videos/histories/create/{mv_id} 201 success')
             return Response(response_data, status=201)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
@@ -1121,7 +1112,6 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
     )
     def patch(self, request, history_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         member = request.user
         try:
             histories = History.objects.get(id=history_id)
@@ -1132,7 +1122,7 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
                     "message": "사용자의 시청 기록이 아닙니다."
                 }
                 logger.warning(
-                    f'WARNING {client_ip} {current_time} PATCH /music-videos/histories/update/{history_id} 404 Not Found')
+                    f'{client_ip} PATCH /music-videos/histories/update/{history_id} 404 Not Found')
                 return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
             current_play_time = request.data.get('current_play_time', histories.current_play_time)
@@ -1145,7 +1135,7 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
                 "status": 200,
                 "message": "뮤직비디오 시청 기록 갱신 성공"
             }
-            logger.info(f'INFO {client_ip} {current_time} PATCH /music-videos/histories/update/{history_id} 200 success')
+            logger.info(f'{client_ip} PATCH /music-videos/histories/update/{history_id} 200 success')
             return Response(response_data, status=status.HTTP_200_OK)
 
         except History.DoesNotExist:
@@ -1155,7 +1145,7 @@ class HistoryUpdateView(ApiAuthMixin, APIView):
                 "message": "시청 기록을 찾을 수 없습니다"
             }
             logger.warning(
-                f'WARNING {client_ip} {current_time} PATCH /music-videos/histories/update/{history_id} 404 Not Found')
+                f'{client_ip} PATCH /music-videos/histories/update/{history_id} 404 Not Found')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
 
@@ -1211,7 +1201,6 @@ class HistoryDetailView(ApiAuthMixin, APIView):
     )
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         username = request.user.username
 
         member = Member.objects.filter(username=username).first()
@@ -1223,7 +1212,7 @@ class HistoryDetailView(ApiAuthMixin, APIView):
                 "message": "회원 정보를 찾을 수 없습니다."
             }
             logger.warning(
-                f'WARNING {client_ip} {current_time} /music-videos/histories 404 Not Found')
+                f'{client_ip} /music-videos/histories 404 Not Found')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         member_histories = History.objects.filter(username=member).order_by('-updated_at')
@@ -1234,7 +1223,7 @@ class HistoryDetailView(ApiAuthMixin, APIView):
                 "message": "시청 기록을 찾을 수 없습니다."
             }
             logger.warning(
-                f'WARNING {client_ip} {current_time} /music-videos/histories 404 Not Found')
+                f'{client_ip} /music-videos/histories 404 Not Found')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         watch_mv_id = member_histories.values_list('mv_id', flat=True)
@@ -1262,7 +1251,7 @@ class HistoryDetailView(ApiAuthMixin, APIView):
                 "last_page": not paginated_queryset.has_next()
             }
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /music-videos/histories 200 views success')
+        logger.info(f'{client_ip} GET /music-videos/histories 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 class MusicVideoSearchView(ApiAuthMixin, APIView):
@@ -1339,16 +1328,14 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
         user = request.user
         if mv_name:
             log_message = {
-                "level": "INFO",
-                "timestamp": current_time,
                 "client_ip": client_ip,
                 "username": user.username,
-                "country": user.country,
+                "country": user.country.name,
                 "sex": user.sex,
                 "action": "search",
                 "mv_name": mv_name
             }
-            logger.info(json.dumps(log_message))
+            logger.info(json.dumps(log_message, ensure_ascii=False))
             # Elasticsearch에서 유사한 이름의 뮤직비디오 검색
             q = MultiMatch(query=mv_name, fields=['subject'], fuzziness='auto')
             search = MusicVideoDocument.search().query(q)
@@ -1369,7 +1356,7 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "뮤직비디오를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /music-videos/searches 404 not found')
+            logger.warning(f'{client_ip} GET /music-videos/searches 404 not found')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         # 페이지네이션
@@ -1394,7 +1381,7 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
                 "last_page": not paginated_queryset.has_next()
             }
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /music-videos/searches 200 views success')
+        logger.info(f'{client_ip} GET /music-videos/searches 200 views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 class MusicVideoStatusView(ApiAuthMixin, APIView):
@@ -1458,7 +1445,6 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
     )
     def get(self, request, task_id):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             task = AsyncResult(task_id)
 
@@ -1494,7 +1480,7 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
                     'message': str(task.info),  # 이곳에서 오류 메시지나 추적 정보 포함
                 }
                 http_status = status.HTTP_200_OK
-            logger.info(f'INFO {client_ip} {current_time} GET /music-videos/status/{task_id} 200 success')
+            logger.info(f'{client_ip} GET /music-videos/status/{task_id} 200 success')
             return Response(response_data, status=http_status)
         except:
             response_data = {
@@ -1503,7 +1489,7 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
                 "HTTPstatus": 404,
                 "message": "task가 존재하지 않습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /music-videos/status/{task_id} 404 does not existing')
+            logger.warning(f'{client_ip} GET /music-videos/status/{task_id} 404 does not existing')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
 

@@ -99,7 +99,6 @@ class DailyChartView(ApiAuthMixin, APIView):
 
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             member = Member.objects.get(username=username)
         except Member.DoesNotExist:
@@ -108,7 +107,7 @@ class DailyChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /charts/{username}/daily 404 Member Not Found')
+            logger.warning(f'{client_ip} GET /charts/{username}/daily 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -146,7 +145,7 @@ class DailyChartView(ApiAuthMixin, APIView):
                     } for date, views in daily_views.items()
                 ],
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/daily 200 No music videos')
+            logger.info(f'{client_ip} GET /charts/{username}/daily 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -176,7 +175,7 @@ class DailyChartView(ApiAuthMixin, APIView):
                     } for date, views in daily_views.items()
                 ],
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/daily 200 day views success')
+        logger.info(f'{client_ip} GET /charts/{username}/daily 200 day views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -242,7 +241,6 @@ class GenderChartView(ApiAuthMixin, APIView):
     )
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             member = Member.objects.get(username=username)
         except Member.DoesNotExist:
@@ -251,7 +249,7 @@ class GenderChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /charts/{username}/genders 404 Member Not Found')
+            logger.warning(f'{client_ip} GET /charts/{username}/genders 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -293,7 +291,7 @@ class GenderChartView(ApiAuthMixin, APIView):
                     } for item in gender_list
                 ],
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/genders 200 No music videos')
+            logger.info(f'{client_ip} GET /charts/{username}/genders 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -324,7 +322,7 @@ class GenderChartView(ApiAuthMixin, APIView):
                     } for item in gender_list
                 ],
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/genders 200 gender views success')
+        logger.info(f'{client_ip} GET /charts/{username}/genders 200 gender views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -412,7 +410,6 @@ class CountryChartView(ApiAuthMixin, APIView):
     )
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             member = Member.objects.get(username=username)
         except Member.DoesNotExist:
@@ -421,7 +418,7 @@ class CountryChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /charts/{username}/countries 404 Member Not Found')
+            logger.warning(f'{client_ip} GET /charts/{username}/countries 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -467,7 +464,7 @@ class CountryChartView(ApiAuthMixin, APIView):
                     } for item in country_list
                 ],
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/countries 200 No music videos')
+            logger.info(f'{client_ip} GET /charts/{username}/countries 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -499,7 +496,7 @@ class CountryChartView(ApiAuthMixin, APIView):
                 } for item in country_list
             ],
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/countries 200 country views success')
+        logger.info(f'{client_ip} GET /charts/{username}/countries 200 country views success')
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -565,7 +562,6 @@ class AgeChartView(ApiAuthMixin, APIView):
     )
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             member = Member.objects.get(username=username)
         except Member.DoesNotExist:
@@ -574,7 +570,7 @@ class AgeChartView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {client_ip} {current_time} GET /charts/{username}/ages 404 Member Not Found')
+            logger.warning(f'{client_ip} GET /charts/{username}/ages 404 Member Not Found')
             return Response(response_data, status=404)
 
         member_name = member.nickname
@@ -629,7 +625,7 @@ class AgeChartView(ApiAuthMixin, APIView):
                     } for item in age_list
                 ],
             }
-            logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/ages 200 No music videos')
+            logger.info(f'{client_ip} GET /charts/{username}/ages 200 No music videos')
             return Response(response_data, status=200)
 
         total_mv = music_videos.count()
@@ -660,6 +656,6 @@ class AgeChartView(ApiAuthMixin, APIView):
                 } for item in age_list
             ],
         }
-        logger.info(f'INFO {client_ip} {current_time} GET /charts/{username}/ages 200 age views success')
+        logger.info(f'{client_ip} GET /charts/{username}/ages 200 age views success')
         return Response(response_data, status=status.HTTP_200_OK)
 

@@ -69,7 +69,6 @@ class MemberInfoView(ApiAuthMixin, APIView):
 
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         member = request.user
         if not member:
             response_data = {
@@ -77,7 +76,7 @@ class MemberInfoView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원정보를 찾을 수 없습니다.",
             }
-            logger.warning(f'WARNING {current_time} {client_ip} GET /members 404 Info check failed')
+            logger.warning(f'{client_ip} GET /members 404 Info check failed')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         response_data = {
@@ -87,7 +86,7 @@ class MemberInfoView(ApiAuthMixin, APIView):
             "status": 200,
             "message": "본인 회원 Info 조회 성공",
         }
-        logger.info(f'INFO {current_time} {client_ip} GET /members 200 Info check success')
+        logger.info(f'{client_ip} GET /members 200 Info check success')
         return Response(response_data, status=200)
 
 class UserCreateApi(PublicApiMixin, APIView):
@@ -122,7 +121,6 @@ class UserCreateApi(PublicApiMixin, APIView):
 
     def post(self, request, *args, **kwargs):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         serializer = RegisterSerializer(data=request.data)
         if not serializer.is_valid():
             response_data = {
@@ -130,7 +128,7 @@ class UserCreateApi(PublicApiMixin, APIView):
                 "status": 400,
                 "message": "회원가입 실패"
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/sign-up 400 Signup failed: {serializer.errors}')
+            logger.warning(f'{client_ip} POST /members/sign-up 400 Signup failed: {serializer.errors}')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         user = serializer.save()
@@ -142,7 +140,7 @@ class UserCreateApi(PublicApiMixin, APIView):
             "status": 201,
             "message": "회원가입 성공",
         }
-        logger.info(f'INFO {current_time} {client_ip} POST /members/sign-up 201 Signup successful for user id: {user.id}')
+        logger.info(f'{client_ip} POST /members/sign-up 201 Signup successful for user id: {user.id}')
         return Response(data=response_data, status=status.HTTP_201_CREATED)
 
 
@@ -205,7 +203,6 @@ class LoginApi(PublicApiMixin, APIView):
         key값 : username, password
         """
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         username = request.data.get('username')
         password = request.data.get('password')
 
@@ -215,7 +212,7 @@ class LoginApi(PublicApiMixin, APIView):
                 "status": 400,
                 "message": "사용자 이름/비밀번호를 작성해주세요."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/login 400 Login failed: {response_data["message"]}')
+            logger.warning(f'{client_ip} POST /members/login 400 Login failed: {response_data["message"]}')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.filter(username=username).first()
@@ -225,7 +222,7 @@ class LoginApi(PublicApiMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/login 404 Member information not found: {response_data["message"]}')
+            logger.warning(f'{client_ip} POST /members/login 404 Member information not found: {response_data["message"]}')
             return Response(data=response_data, status=status.HTTP_404_NOT_FOUND)
 
         if not user.check_password(password):
@@ -234,7 +231,7 @@ class LoginApi(PublicApiMixin, APIView):
                 "status": 400,
                 "message": "잘못된 비밀번호입니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/login 400 Incorrect password: {response_data["message"]}')
+            logger.warning(f'{client_ip} POST /members/login 400 Incorrect password: {response_data["message"]}')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         response = Response()
@@ -245,7 +242,7 @@ class LoginApi(PublicApiMixin, APIView):
             "status": 201,
             "message": "로그인 성공"
         }
-        logger.info(f'INFO {current_time} {client_ip} POST /members/login 201 Login successful')
+        logger.info(f'{client_ip} POST /members/login 201 Login successful')
         return Response(data=response_data, status=status.HTTP_201_CREATED)
 
 
@@ -271,7 +268,6 @@ class LogoutApi(PublicApiMixin, APIView):
         클라이언트 refreshtoken 쿠키를 삭제함으로 로그아웃처리
         """
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         response_data = {
             "code": "A003",
             "status": 202,
@@ -280,7 +276,7 @@ class LogoutApi(PublicApiMixin, APIView):
         response = Response(response_data, status=status.HTTP_202_ACCEPTED)
         response.delete_cookie('refreshtoken')
 
-        logger.info(f'INFO {current_time} {client_ip} POST /members/logout 202 Logout successful')
+        logger.info(f'{client_ip} POST /members/logout 202 Logout successful')
         return response
 
 class MemberDetailView(ApiAuthMixin, APIView):
@@ -326,7 +322,6 @@ class MemberDetailView(ApiAuthMixin, APIView):
 
     def get(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         member = User.objects.filter(username=username).first()
 
@@ -336,7 +331,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} GET /members/details/{username} 404 Member information not found')
+            logger.warning(f'{client_ip} GET /members/details/{username} 404 Member information not found')
             return Response(response_data, status=404)
 
         serializer = MemberDetailSerializer(member)
@@ -346,7 +341,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
             "message": "회원 정보 조회 성공",
             "data": serializer.data,
         }
-        logger.info(f'INFO {current_time} {client_ip} GET /members/details/{username} 200 Member information retrieval successful')
+        logger.info(f'{client_ip} GET /members/details/{username} 200 Member information retrieval successful')
         return Response(response_data, status=200)
 
     parser_classes = (MultiPartParser, FormParser)
@@ -444,7 +439,6 @@ class MemberDetailView(ApiAuthMixin, APIView):
 
     def patch(self, request, username):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         member = User.objects.filter(username=username).first()
 
@@ -454,7 +448,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 "status": 404,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} PATCH /members/details/{username} 404 Member information not found')
+            logger.warning(f'{client_ip} PATCH /members/details/{username} 404 Member information not found')
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         data = request.data.copy()
@@ -483,10 +477,10 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 "status": 200,
                 "message": "회원 정보 수정 완료"
             }
-            logger.info(f'INFO {current_time} {client_ip} PATCH /members/details/{username} 200 Update successful')
+            logger.info(f'{client_ip} PATCH /members/details/{username} 200 Update successful')
             return Response(response_data, status=status.HTTP_200_OK)
 
-        logger.warning(f'WARNING {current_time} {client_ip} PATCH /members/details/{username} 400 Update failed: {serializer.errors}')
+        logger.warning(f'{client_ip} PATCH /members/details/{username} 400 Update failed: {serializer.errors}')
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     @swagger_auto_schema(
         operation_summary="회원 탈퇴 API",
@@ -521,7 +515,6 @@ class MemberDetailView(ApiAuthMixin, APIView):
         일반 회원가입 유저는 비밀번호 입력 후 삭제.
         """
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         user = request.user
         signup_path = user.profile.signup_path
 
@@ -532,7 +525,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
                 "status": 204,
                 "message": "회원 탈퇴 성공",
             }
-            logger.info(f'INFO {current_time}] {client_ip} DELETE /members/details/{user.username} 204 Member deletion successful')
+            logger.info(f'{client_ip} DELETE /members/details/{user.username} 204 Member deletion successful')
             return Response(data=response_data, status=status.HTTP_204_NO_CONTENT)
 
         if not check_password(request.data.get("password"), user.password):
@@ -546,7 +539,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
             "status": 204,
             "message": "회원 탈퇴 성공",
         }
-        logger.info(f'INFO {current_time} {client_ip} DELETE /members/details/{user.username} 204 Member deletion successful')
+        logger.info(f'{client_ip} DELETE /members/details/{user.username} 204 Member deletion successful')
         return Response(data=response_data, status=status.HTTP_204_NO_CONTENT)
 
 class CountryListView(ApiAuthMixin, APIView):
@@ -582,7 +575,6 @@ class CountryListView(ApiAuthMixin, APIView):
     )
     def get(self, request):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             countries = Country.objects.all()
             serializer = CountrySerializer(countries, many=True)
@@ -592,7 +584,7 @@ class CountryListView(ApiAuthMixin, APIView):
                 "message": "국가 리스트 조회 성공",
                 "data": serializer.data
             }
-            logger.info(f'INFO {current_time} {client_ip} GET /members/countries 200 Country list retrieval successful')
+            logger.info(f'{client_ip} GET /members/countries 200 Country list retrieval successful')
             return Response(response_data, status=200)
         except Exception as e:
             response_data = {
@@ -600,7 +592,7 @@ class CountryListView(ApiAuthMixin, APIView):
                 "status": 500,
                 "message": "국가 리스트 조회 실패"
             }
-            logger.error(f'ERROR {current_time} {client_ip} GET /members/countries 500 Country list retrieval failed: {str(e)}')
+            logger.error(f'{client_ip} GET /members/countries 500 Country list retrieval failed: {str(e)}')
             return Response(response_data, status=500)
 
 
@@ -658,7 +650,6 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
     )
     def post(self, request, *args, **kwargs):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         refresh_token = request.COOKIES.get('refreshtoken')
 
         if refresh_token is None:
@@ -667,7 +658,7 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
                 "status": 403,
                 "message": "인증 자격이 증명되지 않았습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/refresh 403 Authentication credentials were not provided')
+            logger.warning(f'{client_ip} POST /members/refresh 403 Authentication credentials were not provided')
             return Response(data=response_data, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -680,7 +671,7 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
                 "status": 403,
                 "message": "리프레시 토큰이 만료되었습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/refresh 403 Refresh token has expired')
+            logger.warning(f'{client_ip} POST /members/refresh 403 Refresh token has expired')
             return Response(data=response_data, status=status.HTTP_403_FORBIDDEN)
 
         user = User.objects.filter(id=payload['user_id']).first()
@@ -691,7 +682,7 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
                 "status": 400,
                 "message": "회원 정보를 찾을 수 없습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/refresh 400 Member information not found')
+            logger.warning(f'{client_ip} POST /members/refresh 400 Member information not found')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
         if not user.is_active:
             response_data = {
@@ -699,7 +690,7 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
                 "status": 400,
                 "message": "사용자의 계정이 비활성화되었습니다."
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/refresh 400 User account is deactivated')
+            logger.warning(f'{client_ip} POST /members/refresh 400 User account is deactivated')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
         access_token = generate_access_token(user)
@@ -710,7 +701,7 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
             "status": 200,
             "message": "Access Token 재발급 성공"
         }
-        logger.info(f'INFO {current_time} {client_ip} POST /members/refresh 200 Access token reissued successfully')
+        logger.info(f'{client_ip} POST /members/refresh 200 Access token reissued successfully')
         return Response(data=response_data, status=status.HTTP_200_OK)
 
 
@@ -750,7 +741,6 @@ class KakaoPayment(ApiAuthMixin, APIView):
     )
     def post(self, request, *args, **kwargs):
         client_ip = request.META.get('REMOTE_ADDR', None)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         credits = request.data.get('credits')
         price = request.data.get('price')
         user = request.user
@@ -767,7 +757,7 @@ class KakaoPayment(ApiAuthMixin, APIView):
                 "message": "결제 요청 성공",
                 "next_redirect_pc_url": (ready_process["next_redirect_pc_url"])
             }
-            logger.info(f'INFO {current_time} {client_ip} POST /members/payments 201 Payment request successful')
+            logger.info(f'{client_ip} POST /members/payments 201 Payment request successful')
             return Response(data=response_data, status=status.HTTP_201_CREATED)
         else:
             response_data = {
@@ -775,5 +765,5 @@ class KakaoPayment(ApiAuthMixin, APIView):
                  "status": 400,
                  "message": "결제 요청 실패"
             }
-            logger.warning(f'WARNING {current_time} {client_ip} POST /members/payments 400 Payment request failed')
+            logger.warning(f'{client_ip} POST /members/payments 400 Payment request failed')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
