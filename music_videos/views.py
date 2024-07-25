@@ -21,6 +21,7 @@ from datetime import datetime
 import logging
 import openai
 import re
+import json
 from django.db.models import Case, When, Q
 
 from elasticsearch_dsl.query import MultiMatch
@@ -1335,8 +1336,19 @@ class MusicVideoSearchView(ApiAuthMixin, APIView):
         message = '뮤직비디오 정보 조회 성공'
         mv_name = request.query_params.get('mv_name', None)
         queryset = MusicVideo.objects.all()
-
+        user = request.user
         if mv_name:
+            log_message = {
+                "level": "INFO",
+                "timestamp": current_time,
+                "client_ip": client_ip,
+                "username": user.username,
+                "country": user.country,
+                "sex": user.sex,
+                "action": "search",
+                "mv_name": mv_name
+            }
+            logger.info(json.dumps(log_message))
             # Elasticsearch에서 유사한 이름의 뮤직비디오 검색
             q = MultiMatch(query=mv_name, fields=['subject'], fuzziness='auto')
             search = MusicVideoDocument.search().query(q)
