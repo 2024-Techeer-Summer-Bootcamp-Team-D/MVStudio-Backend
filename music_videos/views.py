@@ -284,6 +284,9 @@ class MusicVideoView(ApiAuthMixin, APIView):
             )
             task_id = music_video_task.apply_async().id
 
+            user.credits -= 20
+            user.save()
+
             response_data = {
                 "code": "M002",
                 "status": 201,

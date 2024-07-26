@@ -270,9 +270,6 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
 
         if serializer.is_valid():
             serializer.save()
-            user = User.objects.filter(username=username).first()
-            user.credits -= 20
-            user.save()
             logging.info(f'INFO {client_ip} {current_time} POST /music_videos 201 music_video created')
             return
         return False
