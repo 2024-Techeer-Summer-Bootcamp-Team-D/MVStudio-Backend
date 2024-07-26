@@ -92,57 +92,65 @@ class CreateLyricsView(ApiAuthMixin, APIView):
             prompt = (
                 f"Create song lyrics based on the keyword '{subject}'. "
                 f"The genre should be {genre_names_str}, the language should be {language}, and the vocals should be suitable for {vocal} vocals. "
-                f"The song should have 2 verses, each with 4 lines. Each line should be detailed and contain one sentence per line (very important!!). Each line should vividly describe a specific situation or emotion. followed by English translations of each verse, formatted as follows:\n\n"
-                f"---(Original Lyrics)---<br /><br />"
-                f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
-                f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
-                f"[End]<br /><br />"
-                
-                f"---(English Translation)---<br /><br />"
+                f"The song should have one verse and one outro, each with exactly 4 lines. "
+                f"Each line should be detailed and contain one sentence per line (very important!!). Each line should vividly describe a specific situation or emotion."
+                f"Please ensure the lines are concise and the entire verse is not too lengthy. "
+                f"The content must comply with the following restrictions:\n\n"
+                f"- No violence\n"
+                f"- No sexually explicit content\n"
+                f"- No offensive or inappropriate subject matter\n"
+                f"- No references to public figures\n"
+                f"The structure should be as follows:\n\n"
                 f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[End]<br /><br />"
             )
 
             openai.api_key = settings.OPENAI_API_KEY
-            response = openai.chat.completions.create(
+            response_ori = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system",
                      "content": "You are a helpful assistant that writes song lyrics and provides translations."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=1000,
+                max_tokens=300,
                 n=3
             )
 
-            # 가사 추출
-            def extract_lyrics(content):
-                def extract_part(text, start_marker, end_marker):
-                    start_idx = text.find(start_marker)
-                    if start_idx == -1:
-                        return ""
-                    start_idx += len(start_marker)
-                    end_idx = text.find(end_marker, start_idx)
-                    if end_idx == -1:
-                        # end_marker가 없는 경우, 텍스트 끝에 end_marker를 추가
-                        text += end_marker
-                        end_idx = text.find(end_marker, start_idx)
-                    end_idx += len(end_marker)
-                    return text[start_idx:end_idx]
+            lyrics1_ori = response_ori.choices[0].message.content.replace('\n', '<br/>')
+            lyrics2_ori = response_ori.choices[1].message.content.replace('\n', '<br/>')
+            lyrics3_ori = response_ori.choices[2].message.content.replace('\n', '<br/>')
 
-                original_lyrics = extract_part(content, "---(Original Lyrics)---<br /><br />", "[End]<br /><br />")
-                translation_lyrics = extract_part(content, "---(English Translation)---<br /><br />",
-                                                  "[End]<br /><br />")
-                return original_lyrics, translation_lyrics
+            if language.lower() == 'english':
+                lyrics1_eng = lyrics1_ori
+                lyrics2_eng = lyrics2_ori
+                lyrics3_eng = lyrics3_ori
+            else:
+                translate_prompt = (
+                    "Translate the following song lyrics into English. Ensure that the translation includes the [Verse], [Outro], and [End] tags exactly as they appear and use <br /> for line breaks. Do not omit any of these tags:\n\n"
+                    f"1. {lyrics1_ori}\n\n"
+                    f"2. {lyrics2_ori}\n\n"
+                    f"3. {lyrics3_ori}\n\n"
+                    "Each translation should be detailed and maintain the structure and meaning of the original lyrics."
+                   )
+                
+                response_eng = openai.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system",
+                            "content": "You are a helpful assistant that translates song lyrics."},
+                            {"role": "user", "content": translate_prompt}
+                        ],
+                        max_tokens=400,
+                        n=1
+                    )
+            print(f"{response_eng.choices[0].message.content}")
+            translations = response_eng.choices[0].message.content.split('\n\n')
 
-            # print(f"0번째 가사 : {response.choices[0].message.content}")
-            # print(f"1번째 가사 : {response.choices[1].message.content}")
-            # print(f"2번째 가사 : {response.choices[2].message.content}")
-
-            lyrics1_ori, lyrics1_eng = extract_lyrics(response.choices[0].message.content)
-            lyrics2_ori, lyrics2_eng = extract_lyrics(response.choices[1].message.content)
-            lyrics3_ori, lyrics3_eng = extract_lyrics(response.choices[2].message.content)
+            lyrics1_eng = translations[0].replace('1. ', '')
+            lyrics2_eng = translations[1].replace('2. ', '')
+            lyrics3_eng = translations[2].replace('3. ', '')
 
             response_data = {
                 "lyrics_ori": [
@@ -159,6 +167,7 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                 "status": 201,
                 "message": "가사 생성 성공"
             }
+
             logger.info(f'{client_ip} POST /music-videos/lyrics 201 lyrics created')
             return Response(response_data, status=status.HTTP_201_CREATED)
         except Exception as e:
