@@ -1541,6 +1541,20 @@ class CoverImageListView(APIView):
                 description="커버 이미지 조회 성공",
                 examples={
                     "application/json": {
+                        "cover_images": [
+                            {
+                                "mv_id": 0,
+                                "cover_image_url": "string",
+                            },
+                            {
+                                "mv_id": 0,
+                                "cover_image_url": "string",
+                            },
+                            {
+                                "mv_id": 0,
+                                "cover_image_url": "string",
+                            },
+                        ],
                         "code": "M013",
                         "status": 200,
                         "message": "커버 이미지 조회 성공"
@@ -1574,5 +1588,5 @@ class CoverImageListView(APIView):
                 "last_page": not paginated_queryset.has_next()
             }
         }
-        logger.info(f'{client_ip} GET /music-videos/coverimages 200 success')
+        logger.info(f'{client_ip} GET /music-videos/cover-images 200 success')
         return Response(response_data, status=status.HTTP_200_OK)
