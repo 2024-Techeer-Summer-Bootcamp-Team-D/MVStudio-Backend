@@ -148,17 +148,18 @@ DATABASES = {
 # }
 
 # Logging settings
+# Logging settings
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {message} ',
+            'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
     },
     'root': {
-        'handlers': ['file'],
+        'handlers': ['file', 'console'],
         'level': 'INFO',
     },
     'handlers': {
@@ -166,12 +167,17 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': './logs/django.log',
-            'formatter': 'verbose',  # Formatter 사용
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': True,
         },
