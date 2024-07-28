@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -11,7 +12,7 @@ from django.contrib.auth import get_user_model
 
 from member.models import Member
 from .models import Genre, Instrument, MusicVideo, History, Style
-from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, StyleSerializer
+from .serializers import GenreSerializer, InstrumentSerializer, MusicVideoDetailSerializer, MusicVideoDeleteSerializer, StyleSerializer, CoverImageSerializer
 
 from .tasks import suno_music, create_video, mv_create
 from celery import group, chord
@@ -1514,3 +1515,64 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
 
+class CoverImageListView(APIView):
+    permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_summary="커버 이미지 조회 API",
+        operation_description="뮤직비디오 커버 이미지들을 조회합니다.",
+        manual_parameters=[
+            openapi.Parameter(
+                'page',
+                openapi.IN_QUERY,
+                description="페이지 번호 (기본값: 1)",
+                type=openapi.TYPE_INTEGER,
+                default=1
+            ),
+            openapi.Parameter(
+                'size',
+                openapi.IN_QUERY,
+                description="페이지당 아이템 수 (기본값: 14)",
+                type=openapi.TYPE_INTEGER,
+                default=14
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="커버 이미지 조회 성공",
+                examples={
+                    "application/json": {
+                        "code": "M013",
+                        "status": 200,
+                        "message": "커버 이미지 조회 성공"
+                    }
+                }
+            ),
+        }
+    )
+    def get(self, request):
+        client_ip = request.META.get('REMOTE_ADDR', None)
+
+        cover_images = MusicVideo.objects.filter(cover_image__isnull=False)
+        serializer = CoverImageSerializer(cover_images, many=True)
+
+        page = request.query_params.get('page', 1)
+        size = request.query_params.get('size', 14)
+        paginator = Paginator(cover_images, size)
+        paginated_queryset = paginator.get_page(page)
+
+        response_data = {
+            "cover_images": serializer.data,
+            "code": "M013",
+            "HTTPstatus": 200,
+            "message": "커버 이미지 조회 성공",
+            "pagination": {
+                "current_page": paginated_queryset.number,
+                "next_page": paginated_queryset.has_next(),
+                "page_size": size,
+                "total_pages": paginator.num_pages,
+                "total_items": paginator.count,
+                "last_page": not paginated_queryset.has_next()
+            }
+        }
+        logger.info(f'{client_ip} GET /music-videos/coverimages 200 success')
+        return Response(response_data, status=status.HTTP_200_OK)

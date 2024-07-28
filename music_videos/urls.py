@@ -13,6 +13,7 @@ urlpatterns = [
     path('/genres', views.GenreListView.as_view(), name='genres-list'),
     path('/instruments', views.InstrumentListView.as_view(), name='instruments-list'),
     path('/styles', views.StyleListView.as_view(), name='styles-list'),
+    path('/cover-images', views.CoverImageListView.as_view(), name='cover-images-list'),
     path('/histories/update/<int:history_id>', views.HistoryUpdateView.as_view(), name='update-history'),
     path('/histories/create/<int:mv_id>', views.HistoryCreateView.as_view(), name='create-history'),
     path('/histories', views.HistoryDetailView.as_view(), name='history-detail'),
