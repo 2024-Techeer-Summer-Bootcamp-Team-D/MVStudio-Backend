@@ -10,8 +10,7 @@ User = get_user_model()
 
 
 class KakaoPayClient(object):
-    # BASE_URL = "http://mvstudio.pro:8000/api/v1/members/"
-    BASE_URL = "http://localhost:8000/api/v1/members/"
+    BASE_URL = settings.BASE_BACKEND_URL + "api/v1/members/"
 
     ADMIN_KEY = settings.KAKAO_APP_ADMIN_KEY
     READY_URL = 'https://open-api.kakaopay.com/online/v1/payment/ready'
