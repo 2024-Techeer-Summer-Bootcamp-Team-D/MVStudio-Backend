@@ -494,10 +494,11 @@ class MusicVideoDevelopView(APIView):
                 'tempo': openapi.Schema(type=openapi.TYPE_STRING, description='템포'),
                 'language': openapi.Schema(type=openapi.TYPE_STRING, description='언어'),
                 'vocal': openapi.Schema(type=openapi.TYPE_STRING, description='보컬'),
+                'length': openapi.Schema(type=openapi.TYPE_INTEGER, description='길이'),
                 'cover_image': openapi.Schema(type=openapi.TYPE_STRING, description='커버 이미지 URL'),
                 'mv_file': openapi.Schema(type=openapi.TYPE_STRING, description='뮤직비디오 파일 URL')
             },
-            required=['username', 'subject', 'lyrics', 'genres_ids', 'instruments_ids', 'style_id', 'tempo', 'language', 'vocal', 'cover_image', 'mv_file']
+            required=['username', 'subject', 'lyrics', 'genres_ids', 'style_id', 'tempo', 'language', 'vocal', 'length', 'cover_image', 'mv_file']
         ),
         responses={
             201: openapi.Response(
@@ -552,7 +553,7 @@ class MusicVideoDevelopView(APIView):
             instruments_str = ", ".join(instruments_names)
 
             style_id = request.data.get('style_id')
-
+            length = request.data.get('length')
             tempo = request.data.get('tempo')
             language = request.data.get('language')
             vocal = request.data.get('vocal')
@@ -560,7 +561,7 @@ class MusicVideoDevelopView(APIView):
             mv_file = request.data.get('mv_file')
 
             # 필수 필드 확인
-            if not (username and subject and lyrics and genres_ids and instruments_ids and style_id and tempo and language and vocal and cover_image and mv_file):
+            if not (username and subject and lyrics and genres_ids and length and style_id and tempo and language and vocal and cover_image and mv_file):
                 response_data = {
                     "code": "M002_1",
                     "status": 400,
@@ -590,7 +591,7 @@ class MusicVideoDevelopView(APIView):
                 vocal=vocal,
                 cover_image=cover_image,
                 mv_file=mv_file,
-                length=85.0,
+                length=length,
                 recently_viewed=0,
                 views=0
             )
