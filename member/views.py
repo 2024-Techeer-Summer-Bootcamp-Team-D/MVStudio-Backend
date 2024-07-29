@@ -629,18 +629,18 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
                     ]
                 }
             ),
-            403: openapi.Response(
+            401: openapi.Response(
                 description="Access Token 재발급 실패",
                 examples={
                     "application/json": [
                         {
                             "code": "A005_3",
-                            "status": 403,
+                            "status": 401,
                             "message": "인증 자격이 증명되지 않았습니다."
                         },
                         {
                             "code": "A005_4",
-                            "status": 403,
+                            "status": 401,
                             "message": "리프레시 토큰이 만료되었습니다."
                         }
                     ]
@@ -655,11 +655,11 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
         if refresh_token is None:
             response_data = {
                 "code": "A005_3",
-                "status": 403,
+                "status": 401,
                 "message": "인증 자격이 증명되지 않았습니다."
             }
-            logger.warning(f'{client_ip} POST /members/refresh 403 Authentication credentials were not provided')
-            return Response(data=response_data, status=status.HTTP_403_FORBIDDEN)
+            logger.warning(f'{client_ip} POST /members/refresh 401 Authentication credentials were not provided')
+            return Response(data=response_data, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
             payload = jwt.decode(
@@ -668,11 +668,11 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
         except:
             response_data = {
                 "code": "A005_4",
-                "status": 403,
+                "status": 401,
                 "message": "리프레시 토큰이 만료되었습니다."
             }
-            logger.warning(f'{client_ip} POST /members/refresh 403 Refresh token has expired')
-            return Response(data=response_data, status=status.HTTP_403_FORBIDDEN)
+            logger.warning(f'{client_ip} POST /members/refresh 401 Refresh token has expired')
+            return Response(data=response_data, status=status.HTTP_401_UNAUTHORIZED)
 
         user = User.objects.filter(id=payload['user_id']).first()
 

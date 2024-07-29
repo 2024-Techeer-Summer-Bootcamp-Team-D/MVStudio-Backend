@@ -1,6 +1,7 @@
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, CSRFCheck
-
+from rest_framework.response import Response
+from rest_framework import status
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import datetime, jwt
@@ -18,7 +19,7 @@ class SafeJWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
         authorization_header = request.headers.get('Authorization')
         if not authorization_header:
-            return None
+            raise exceptions.NotAuthenticated("Authentication credentials were not provided.")
 
         try:
             # prefix = authorization_header.split(' ')[0]
