@@ -70,42 +70,6 @@ class LoginGoogleCallbackView(PublicApiMixin, APIView):
         response = jwt_login(response=response, user=member)
         return response
 
-
-# @swagger_auto_schema(auto_schema=None)
-# class YoutubeUploadGoogleView(ApiAuthMixin, APIView):
-#     def post(self, request, *args, **kwargs):
-#         app_key = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
-#         scope = "https://www.googleapis.com/auth/youtube " + \
-#                 "https://www.googleapis.com/auth/youtube.readonly " + \
-#                 "https://www.googleapis.com/auth/youtube.upload"
-#
-#         mv_id = kwargs.get('mv_id')
-#
-#         redirect_uri = settings.BASE_BACKEND_URL + f"api/v1/oauth/youtube/callback"
-#         google_auth_api = "https://accounts.google.com/o/oauth2/v2/auth"
-#
-#         response = redirect(
-#             f"{google_auth_api}?client_id={app_key}&response_type=code&redirect_uri={redirect_uri}&scope={scope}&state={mv_id}"
-#         )
-#
-#         return response
-#
-# @swagger_auto_schema(auto_schema=None)
-# class YoutubeUploadGoogleCallbackView(PublicApiMixin, APIView):
-#     def get(self, request, *args, **kwargs):
-#         code = request.GET.get('code')
-#         mv_id = request.GET.get('state')
-#         google_token_api = "https://oauth2.googleapis.com/token"
-#
-#         redirection_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube/callback"
-#
-#         access_token = google_get_access_token(google_token_api, code, redirection_uri)
-#         google_upload_youtube(access_token=access_token, mv_id=mv_id)
-#         response = redirect(settings.BASE_FRONTEND_URL+'main')
-#
-#         return response
-
-
 @swagger_auto_schema(auto_schema=None)
 class AuthYoutubeView(PublicApiMixin, APIView):
     def get(self, request):
@@ -311,11 +275,6 @@ def download_video(video_url):
     response = requests.get(video_url, stream=True)
     response.raise_for_status()  # 요청이 성공적으로 완료되지 않으면 예외 발생
     return BytesIO(response.content)
-
-# def download_thumbnail(thumbnail_url):
-#     response = requests.get(thumbnail_url, stream=True)
-#     response.raise_for_status()
-#     return BytesIO(response.content)
 
 class UploadVideoView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
