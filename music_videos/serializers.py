@@ -101,7 +101,7 @@ class MusicVideoDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = MusicVideo
         fields = [
-            'id', 'subject', 'cover_image', 'mv_file', 'lyrics', 'member_name', 'profile_image', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
+            'id', 'username', 'subject', 'cover_image', 'mv_file', 'lyrics', 'member_name', 'profile_image', 'length', 'views', 'genres', 'instruments', 'style_name', 'language', 'vocal', 'tempo'
         ]
     def get_member_name(self, obj):
         return obj.username.nickname
