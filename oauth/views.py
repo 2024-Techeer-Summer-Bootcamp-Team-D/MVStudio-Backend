@@ -197,6 +197,7 @@ class YoutubeUploadGoogleView(ApiAuthMixin, APIView):
                 'https://www.googleapis.com/auth/youtube.upload',
                 'https://www.googleapis.com/auth/userinfo.email',
                 'openid',
+                'https://www.googleapis.com/auth/youtubepartner',
                 'https://www.googleapis.com/auth/youtube.readonly',
                 'https://www.googleapis.com/auth/youtube',
                 'https://www.googleapis.com/auth/userinfo.profile'
@@ -223,7 +224,7 @@ def credentials_to_dict(credentials):
         'scopes': credentials.scopes
     }
 @swagger_auto_schema(auto_schema=None)
-class YoutubeUploadGoogleCallbackView(APIView):
+class YoutubeUploadGoogleCallbackView(PublicApiMixin, APIView):
     def get(self, request):
         state = request.session.get('state')
         mv_id = request.session.get('mv_id')
@@ -249,6 +250,7 @@ class YoutubeUploadGoogleCallbackView(APIView):
                 'https://www.googleapis.com/auth/youtube.upload',
                 'https://www.googleapis.com/auth/userinfo.email',
                 'openid',
+                'https://www.googleapis.com/auth/youtubepartner',
                 'https://www.googleapis.com/auth/youtube.readonly',
                 'https://www.googleapis.com/auth/youtube',
                 'https://www.googleapis.com/auth/userinfo.profile'
