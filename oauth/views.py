@@ -1,7 +1,6 @@
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-import google.auth
 from google.oauth2.credentials import Credentials
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -211,10 +210,10 @@ class YoutubeUploadGoogleView(ApiAuthMixin, APIView):
         if (str(mv.username) != str(request.user.username)):
             response_data = {
                 "code": "O002_1",
-                "status": 401,
+                "status": 403,
                 "message": "본인 소유의 뮤직비디오가 아닙니다."
             }
-            return Response(response_data, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(response_data, status=status.HTTP_403_FORBIDDEN)
 
         redirect_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube/callback"
 
@@ -338,10 +337,10 @@ class UploadVideoView(ApiAuthMixin, APIView):
         if not credentials:
             response_data = {
                 "code": "O003_2",
-                "status": 401,
+                "status": 403,
                 "message": "구글 계정 권한이 없습니다."
             }
-            return Response(response_data, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(response_data, status=status.HTTP_403_FORBIDDEN)
 
         credentials = Credentials(**credentials)
 
@@ -351,10 +350,10 @@ class UploadVideoView(ApiAuthMixin, APIView):
         if (str(mv.username) != str(request.user.username)):
             response_data = {
                 "code": "O003_1",
-                "status": 401,
+                "status": 403,
                 "message": "본인 소유의 뮤직비디오가 아닙니다."
             }
-            return Response(response_data, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(response_data, status=status.HTTP_403_FORBIDDEN)
 
         title = request.data.get('title', mv.subject)
         description = request.data.get('description')
@@ -406,7 +405,7 @@ class UploadVideoView(ApiAuthMixin, APIView):
                             "status": 200,
                             "message": f"뮤직비디오 업로드는 성공하였으나, 권한문제로 인하여 썸네일 업로드를 실패하였습니다. error: {error_content.decode()}"
                         }
-                        return Response(response_data, status=status.HTTP_403_FORBIDDEN)
+                        return Response(response_data, status=status.HTTP_200_OK)
                     response_data = {
                         "code": "O003",
                         "status": 200,
