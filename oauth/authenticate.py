@@ -19,7 +19,7 @@ class SafeJWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
         authorization_header = request.headers.get('Authorization')
         if not authorization_header:
-            raise exceptions.NotAuthenticated("Authentication credentials were not provided.")
+            return None
 
         try:
             # prefix = authorization_header.split(' ')[0]
