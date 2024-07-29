@@ -32,12 +32,12 @@ class DailyChartView(ApiAuthMixin, APIView):
                         {
                         "code": "C001_1",
                         "status": 200,
-                        "message": "사용자 채널 개수가 0개입니다.",
+                        "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                         "data": {
                             "member_name": "string",
                             "total_mv": 0,
                             "total_views": 0,
-                            "popular_mv_subject": "",
+                            "popular_mv_subject": "No video",
                             "popular_mv_views": 0,
                             "daily_views": [
                                 {
@@ -132,11 +132,11 @@ class DailyChartView(ApiAuthMixin, APIView):
             response_data = {
                 "code": "C001_1",
                 "status": 200,
-                "message": "사용자 채널 개수가 0개입니다.",
+                "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                 "member_name": member_name,
                 "total_mv": 0,
                 "total_views": 0,
-                "popular_mv_subject": "",
+                "popular_mv_subject": "No video",
                 "popular_mv_views": 0,
                 "daily_views": [
                     {
@@ -150,14 +150,17 @@ class DailyChartView(ApiAuthMixin, APIView):
 
         total_mv = music_videos.count()
         total_views = 0
-        popular_mv_subject = []
+        popular_mv_subject = ""
         popular_mv_views = 0
 
         for music_video in music_videos:
             total_views += music_video.views
             if music_video.views >= popular_mv_views and music_video.views != 0:
-                popular_mv_subject.append(music_video.subject)
+                popular_mv_subject = music_video.subject
                 popular_mv_views = music_video.views
+
+        if popular_mv_subject == "":
+            popular_mv_subject = "No views"
 
         response_data = {
             "code": "C001",
@@ -191,12 +194,12 @@ class GenderChartView(ApiAuthMixin, APIView):
                         {
                         "code": "C002_1",
                         "status": 200,
-                        "message": "사용자 채널 개수가 0개입니다.",
+                        "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                         "data": {
                             "member_name": "string",
                             "total_mv": 0,
                             "total_views": 0,
-                            "popular_mv_subject": "",
+                            "popular_mv_subject": "No video",
                             "popular_mv_views": 0,
                             "gender_list": [
                                 {
@@ -278,11 +281,11 @@ class GenderChartView(ApiAuthMixin, APIView):
             response_data = {
                 "code": "C002_1",
                 "status": 200,
-                "message": "사용자 채널 개수가 0개입니다.",
+                "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                 "member_name": member_name,
                 "total_mv": 0,
                 "total_views": 0,
-                "popular_mv_subject": "",
+                "popular_mv_subject": "No video",
                 "popular_mv_views": 0,
                 "gender_list": [
                     {
@@ -296,15 +299,18 @@ class GenderChartView(ApiAuthMixin, APIView):
 
         total_mv = music_videos.count()
         total_views = 0
-        popular_mv_subject = []
+        popular_mv_subject = ""
         popular_mv_views = 0
 
         for music_video in music_videos:
             mv_views = MusicVideo.objects.get(id=music_video).views
             total_views += mv_views
             if mv_views >= popular_mv_views and mv_views != 0:
-                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
+                popular_mv_subject = MusicVideo.objects.get(id=music_video).subject
                 popular_mv_views = mv_views
+
+        if popular_mv_subject == "":
+            popular_mv_subject = "No views"
 
         response_data = {
             "code": "C002",
@@ -338,12 +344,12 @@ class CountryChartView(ApiAuthMixin, APIView):
                         {
                         "code": "C003_1",
                         "status": 200,
-                        "message": "사용자 채널 개수가 0개입니다.",
+                        "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                         "data": {
                             "member_name": "string",
                             "total_mv": 0,
                             "total_views": 0,
-                            "popular_mv_subject": "",
+                            "popular_mv_subject": "No video",
                             "popular_mv_views": 0,
                             "country_list": [
                                 {
@@ -450,11 +456,11 @@ class CountryChartView(ApiAuthMixin, APIView):
             response_data = {
                 "code": "C003_1",
                 "status": 200,
-                "message": "사용자 채널 개수가 0개입니다.",
+                "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                 "member_name": member_name,
                 "total_mv": 0,
                 "total_views": 0,
-                "popular_mv_subject": "",
+                "popular_mv_subject": "No video",
                 "popular_mv_views": 0,
                 "country_list": [
                     {
@@ -469,15 +475,18 @@ class CountryChartView(ApiAuthMixin, APIView):
 
         total_mv = music_videos.count()
         total_views = 0
-        popular_mv_subject = []
+        popular_mv_subject = ""
         popular_mv_views = 0
 
         for music_video in music_videos:
             mv_views = MusicVideo.objects.get(id=music_video).views
             total_views += mv_views
             if mv_views >= popular_mv_views and mv_views != 0:
-                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
+                popular_mv_subject = MusicVideo.objects.get(id=music_video).subject
                 popular_mv_views = mv_views
+
+        if popular_mv_subject == "":
+            popular_mv_subject = "No views"
 
         response_data = {
             "code": "C003",
@@ -512,12 +521,12 @@ class AgeChartView(ApiAuthMixin, APIView):
                         {
                             "code": "C004_1",
                             "status": 200,
-                            "message": "사용자 채널 개수가 0개입니다.",
+                            "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                             "data": {
                                 "member_name": "string",
                                 "total_mv": 0,
                                 "total_views": 0,
-                                "popular_mv_subject": "",
+                                "popular_mv_subject": "No video",
                                 "popular_mv_views": 0,
                                 "age_list": [
                                     {
@@ -612,11 +621,11 @@ class AgeChartView(ApiAuthMixin, APIView):
             response_data = {
                 "code": "C004_1",
                 "status": 200,
-                "message": "사용자 채널 개수가 0개입니다.",
+                "message": "사용자 뮤직 비디오 개수가 0개입니다.",
                 "member_name": member_name,
                 "total_mv": 0,
                 "total_views": 0,
-                "popular_mv_subject": "",
+                "popular_mv_subject": "No video",
                 "popular_mv_views": 0,
                 "age_list": [
                     {
@@ -630,15 +639,18 @@ class AgeChartView(ApiAuthMixin, APIView):
 
         total_mv = music_videos.count()
         total_views = 0
-        popular_mv_subject = []
+        popular_mv_subject = ""
         popular_mv_views = 0
 
         for music_video in music_videos:
             mv_views = MusicVideo.objects.get(id=music_video).views
             total_views += mv_views
             if mv_views >= popular_mv_views and mv_views != 0:
-                popular_mv_subject.append(MusicVideo.objects.get(id=music_video).subject)
+                popular_mv_subject = MusicVideo.objects.get(id=music_video).subject
                 popular_mv_views = mv_views
+
+        if popular_mv_subject == "":
+            popular_mv_subject = "No views"
 
         response_data = {
             "code": "C004",
