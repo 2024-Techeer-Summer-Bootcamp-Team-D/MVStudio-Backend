@@ -1057,36 +1057,37 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             logger.warning(f'{client_ip} POST /music-videos/histories/create/{mv_id} 400 the user\'s music video')
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            history_test = History.objects.get(username=member.username, mv_id=mv)
-            if history_test:
-                response_data = {
-                    "history_id": history_test.id,
-                    "current_play_time": history_test.current_play_time,
-                    "code": "M008_4",
-                    "status": 409,
-                    "message": "이미 시청한 기록이 있습니다."
-                }
-                logger.warning(f'{client_ip} /music-videos/histories/create/{mv_id} 409 already exists')
-                return Response(response_data, status=status.HTTP_409_CONFLICT)
-        except:
-            histories = History.objects.create(
-                username=member,
-                mv_id=mv,
-                current_play_time=0,
-                is_deleted=False
-            )
-            response_data = {
-                "history_id": histories.id,
-                "code": "M008",
-                "status": 201,
-                "message": "시청 기록 추가 성공"
+        history, created = History.objects.get_or_create(
+            username=member,
+            mv_id=mv,
+            defaults={
+                'current_play_time': 0,
+                'is_deleted': False
             }
-            mv.views += 1
-            mv.recently_viewed += 1
-            mv.save()
-            logger.info(f'{client_ip} GET /music-videos/histories/create/{mv_id} 201 success')
-            return Response(response_data, status=201)
+        )
+
+        if not created:
+            response_data = {
+                "history_id": history.id,
+                "current_play_time": history.current_play_time,
+                "code": "M008_4",
+                "status": 409,
+                "message": "이미 시청한 기록이 있습니다."
+            }
+            logger.warning(f'{client_ip} /music-videos/histories/create/{mv_id} 409 already exists')
+            return Response(response_data, status=status.HTTP_409_CONFLICT)
+
+        response_data = {
+            "history_id": histories.id,
+            "code": "M008",
+            "status": 201,
+            "message": "시청 기록 추가 성공"
+        }
+        mv.views += 1
+        mv.recently_viewed += 1
+        mv.save()
+        logger.info(f'{client_ip} GET /music-videos/histories/create/{mv_id} 201 success')
+        return Response(response_data, status=201)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
