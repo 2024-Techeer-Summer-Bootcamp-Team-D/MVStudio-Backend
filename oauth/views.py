@@ -16,7 +16,7 @@ from django.contrib.auth import get_user_model
 
 from .mixins import PublicApiMixin, ApiAuthMixin
 from .utils import social_user_get_or_create
-from .services import google_get_access_token, google_get_user_info, google_upload_youtube
+from .services import google_get_access_token, google_get_user_info
 from .authenticate import jwt_login
 from music_videos.models import MusicVideo
 import requests
