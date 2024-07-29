@@ -126,3 +126,8 @@ class HistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = History
         fields = '__all__'
+
+class CoverImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MusicVideo
+        fields = ['id', 'cover_image']
