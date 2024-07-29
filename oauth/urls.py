@@ -6,6 +6,7 @@ urlpatterns = [
     path('/login/google/callback', views.LoginGoogleCallbackView.as_view(), name='login_google_callback'),
     path('/youtube/<int:mv_id>', views.YoutubeUploadGoogleView.as_view(), name='youtube_auth'),
     path('/youtube/callback', views.YoutubeUploadGoogleCallbackView.as_view(), name='youtube_callback'),
+    path('/youtube/uploads/<int:mv_id>', views.UploadVideoView.as_view(), name='youtube_upload'),
     path('/youtube-channel', views.AuthYoutubeView.as_view(), name='youtube_channel'),
     path('/youtube-channel/callback', views.AuthYoutubeCallbackView.as_view(), name='youtube_channel_callback'),
 ]
