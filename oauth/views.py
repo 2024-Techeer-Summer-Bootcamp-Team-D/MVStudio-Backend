@@ -167,7 +167,7 @@ class AuthYoutubeCallbackView(PublicApiMixin, APIView):
 
 
 @swagger_auto_schema(auto_schema=None)
-class YoutubeUploadGoogleView(APIView):
+class YoutubeUploadGoogleView(PublicApiMixin, APIView):
     def get(self, request, mv_id):
         redirect_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube/callback"
 
