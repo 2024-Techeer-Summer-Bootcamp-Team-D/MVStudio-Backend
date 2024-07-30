@@ -123,13 +123,22 @@ class UserCreateApi(PublicApiMixin, APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
         serializer = RegisterSerializer(data=request.data)
         if not serializer.is_valid():
-            response_data = {
-                "code": "A001_1",
-                "status": 400,
-                "message": "회원가입 실패"
-            }
-            logger.warning(f'{client_ip} POST /members/sign-up 400 Signup failed: {serializer.errors}')
-            return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
+            if serializer.errors.get('username'):
+                response_data = {
+                    "code": "A001_1",
+                    "status": 409,
+                    "message": "이미 존재하는 ID입니다."
+                }
+                logger.warning(f'{client_ip} POST /members/sign-up 400 Signup failed: {serializer.errors}')
+                return Response(data=response_data, status=status.HTTP_409_CONFLICT)
+            elif serializer.errors.get('email'):
+                response_data = {
+                    "code": "A001_1",
+                    "status": 409,
+                    "message": "이미 존재하는 이메일입니다."
+                }
+                logger.warning(f'{client_ip} POST /members/sign-up 409 Signup failed: {serializer.errors}')
+                return Response(data=response_data, status=status.HTTP_409_CONFLICT)
 
         user = serializer.save()
         response = Response()
