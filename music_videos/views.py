@@ -27,7 +27,7 @@ from django.db.models import Case, When, Q
 
 from elasticsearch_dsl.query import MultiMatch
 from .documents import MusicVideoDocument
-from oauth.mixins import ApiAuthMixin
+from oauth.mixins import ApiAuthMixin, PublicApiMixin
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -1517,8 +1517,7 @@ class MusicVideoStatusView(ApiAuthMixin, APIView):
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
 
-class CoverImageListView(APIView):
-    permission_classes = [AllowAny]
+class CoverImageListView(PublicApiMixin, APIView):
     @swagger_auto_schema(
         operation_summary="커버 이미지 조회 API",
         operation_description="뮤직비디오 커버 이미지들을 조회합니다.",
