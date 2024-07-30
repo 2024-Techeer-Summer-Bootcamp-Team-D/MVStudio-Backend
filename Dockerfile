@@ -16,5 +16,7 @@ RUN pip install --upgrade -r /requirements.txt
 # 프로젝트 파일을 모두 복사합니다.
 COPY . ./
 
+ENV MY_ENV_VARIABLE=my_value
+
 # Django의 collectstatic 명령어를 실행합니다.
 RUN python manage.py collectstatic --noinput
