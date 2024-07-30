@@ -662,7 +662,6 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
     def post(self, request, *args, **kwargs):
         client_ip = request.META.get('REMOTE_ADDR', None)
         refresh_token = request.COOKIES.get('refreshtoken')
-        print(request.COOKIES)
 
         if refresh_token is None:
             response_data = {
