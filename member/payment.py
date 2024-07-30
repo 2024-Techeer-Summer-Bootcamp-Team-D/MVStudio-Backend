@@ -36,9 +36,10 @@ class KakaoPayClient(object):
                     "partner_order_id": f"{payment_req.pk}",     # 주문번호
                     "partner_user_id": f"{user.pk}",    # 유저 아이디
                     "item_name": "credits",        # 구매 물품 이름
-                    "quantity": f"{credits}",                # 구매 물품 수량
-                    "total_amount": f"{price}",  # 구매 물품 가격
-                    "tax_free_amount": "100",         # 구매 물품 비과세
+                    "quantity": 1,                # 구매 물품 수량
+                    "total_amount": price,  # 구매 물품 가격
+                    "tax_free_amount": 0,         # 구매 물품 비과세
+                    "vat_amount": 100,
                     "approval_url": self.BASE_URL + f"payments/callback/{req_obj_id}/success",
                     "cancel_url": self.BASE_URL + f"payments/callback/{req_obj_id}/cancel",
                     "fail_url": self.BASE_URL + f"payments/callback/{req_obj_id}/fail",
@@ -71,12 +72,18 @@ class KakaoPayClient(object):
     def cancel(self, payment_req):
         params = {
             "cid": f"{self.cid}",
-            "tid": f"{payment_req.tid}"
+            "tid": f"{payment_req.tid}",
+            "cancel_amount": payment_req.price,
+            "cancel_tax_free_amount": 0,
+            "cancel_vat_amount": 100,
         }
         params = json.dumps(params)
+        print(params)
 
         res = requests.post(
             self.CANCEL_URL, headers=self.headers, data=params)
+
+        print(res.json())
 
         if res.status_code == 200:
             res_json = res.json()
