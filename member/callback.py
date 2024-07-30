@@ -36,23 +36,26 @@ class KakaoPayCancelCallbackAPIView(APIView):
     permission_classes = [AllowAny, ]
 
     def get(self, request, pk):
-        kakao_pay = KakaoPayClient()
-
-        try:
-            payment_req = KakaoPaymentRequest.objects.get(id=pk)
-
-            success, status = kakao_pay.cancel(payment_req)
-
-            if success:
-                redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
-                response = redirect(redirect_uri)
-                return response
-            else:
-                redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
-                response = redirect(redirect_uri)
-                return response
-        except KakaoPaymentRequest.DoesNotExist:
-            return Response("Not Found")
+        redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
+        response = redirect(redirect_uri)
+        return response
+        # kakao_pay = KakaoPayClient()
+        #
+        # try:
+        #     payment_req = KakaoPaymentRequest.objects.get(id=pk)
+        #
+        #     success, status = kakao_pay.cancel(payment_req)
+        #
+        #     if success:
+        #         redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
+        #         response = redirect(redirect_uri)
+        #         return response
+        #     else:
+        #         redirect_uri = settings.BASE_FRONTEND_URL + f"payment?status=fail"
+        #         response = redirect(redirect_uri)
+        #         return response
+        # except KakaoPaymentRequest.DoesNotExist:
+        #     return Response("Not Found")
 
 
 class KakaoPaySuccessCallbackAPIView(APIView):
