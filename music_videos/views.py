@@ -1568,12 +1568,13 @@ class CoverImageListView(PublicApiMixin, APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
 
         cover_images = MusicVideo.objects.filter(cover_image__isnull=False)
-        serializer = CoverImageSerializer(cover_images, many=True)
 
         page = request.query_params.get('page', 1)
         size = request.query_params.get('size', 14)
         paginator = Paginator(cover_images, size)
         paginated_queryset = paginator.get_page(page)
+
+        serializer = CoverImageSerializer(paginated_queryset, many=True)
 
         response_data = {
             "cover_images": serializer.data,
