@@ -167,18 +167,8 @@ class AuthYoutubeCallbackView(PublicApiMixin, APIView):
 
 
 @swagger_auto_schema(auto_schema=None)
-class YoutubeUploadGoogleView(ApiAuthMixin, APIView):
+class YoutubeUploadGoogleView(APIView):
     def get(self, request, mv_id):
-        mv = MusicVideo.objects.get(id=mv_id)
-
-        if (str(mv.username) != str(request.user.username)):
-            response_data = {
-                "code": "O002_1",
-                "status": 403,
-                "message": "본인 소유의 뮤직비디오가 아닙니다."
-            }
-            return Response(response_data, status=status.HTTP_403_FORBIDDEN)
-
         redirect_uri = settings.BASE_BACKEND_URL + "api/v1/oauth/youtube/callback"
 
         client_config = {
