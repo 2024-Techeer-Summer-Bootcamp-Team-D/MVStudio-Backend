@@ -310,6 +310,7 @@ class MemberDetailView(ApiAuthMixin, APIView):
                             "profile_image": "string",
                             "comment": "string",
                             "country": "string",
+                            "country_id": 0,
                             "birthday": "string",
                             "sex": "string",
                             "youtube_account": "string",
