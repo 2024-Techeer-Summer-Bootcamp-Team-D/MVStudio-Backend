@@ -141,16 +141,16 @@ class UserCreateApi(PublicApiMixin, APIView):
                 return Response(data=response_data, status=status.HTTP_409_CONFLICT)
 
         user = serializer.save()
-        response = Response()
+        response = Response(status=status.HTTP_201_CREATED)
         response_token = jwt_login(response=response, user=user)
-        response_data = {
-            "access_token": response.data.get('access_token'),
+        response_token.data = {
+            "access_token": response_token.data.get('access_token'),
             "code": "A001",
             "status": 201,
             "message": "회원가입 성공",
         }
         logger.info(f'{client_ip} POST /members/sign-up 201 Signup successful for user id: {user.id}')
-        return Response(data=response_data, status=status.HTTP_201_CREATED)
+        return response_token
 
 
 class LoginApi(PublicApiMixin, APIView):
@@ -243,16 +243,18 @@ class LoginApi(PublicApiMixin, APIView):
             logger.warning(f'{client_ip} POST /members/login 400 Incorrect password: {response_data["message"]}')
             return Response(data=response_data, status=status.HTTP_400_BAD_REQUEST)
 
-        response = Response()
+        response = Response(status=status.HTTP_201_CREATED)
         response_token = jwt_login(response=response, user=user)
-        response_data = {
-            "access_token": response.data.get('access_token'),
+
+        response_token.data = {
+            "access_token": response_token.data.get('access_token'),
             "code": "A002",
             "status": 201,
             "message": "로그인 성공"
         }
+
         logger.info(f'{client_ip} POST /members/login 201 Login successful')
-        return Response(data=response_data, status=status.HTTP_201_CREATED)
+        return response_token
 
 
 class LogoutApi(PublicApiMixin, APIView):
@@ -660,6 +662,7 @@ class RefreshJWTtoken(PublicApiMixin, APIView):
     def post(self, request, *args, **kwargs):
         client_ip = request.META.get('REMOTE_ADDR', None)
         refresh_token = request.COOKIES.get('refreshtoken')
+        print(request.COOKIES)
 
         if refresh_token is None:
             response_data = {
