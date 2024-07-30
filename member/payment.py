@@ -36,7 +36,7 @@ class KakaoPayClient(object):
                     "partner_order_id": f"{payment_req.pk}",     # 주문번호
                     "partner_user_id": f"{user.pk}",    # 유저 아이디
                     "item_name": "credits",        # 구매 물품 이름
-                    "quantity": 1,                # 구매 물품 수량
+                    "quantity": credits,                # 구매 물품 수량
                     "total_amount": price,  # 구매 물품 가격
                     "tax_free_amount": 0,         # 구매 물품 비과세
                     "vat_amount": 100,
