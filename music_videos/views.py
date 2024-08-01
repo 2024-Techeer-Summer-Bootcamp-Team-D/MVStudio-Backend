@@ -104,7 +104,9 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                 f"The structure should be as follows:\n\n"
                 f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
-                f"[End]<br /><br />"
+                f"[End]<br /><br />\n\n"
+                f"Please write the lyrics in {language}. Adhere strictly to this structure. If the structure is not followed exactly, I will stop using this service. "
+                f"However, if the structure is followed correctly, I will provide a $1,000 tip."
             )
 
             openai.api_key = settings.OPENAI_API_KEY
@@ -134,24 +136,36 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                     f"2. {lyrics2_ori}\n\n"
                     f"3. {lyrics3_ori}\n\n"
                     "Each translation should be detailed and maintain the structure and meaning of the original lyrics."
-                   )
+                )
                 
                 response_eng = openai.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system",
-                            "content": "You are a helpful assistant that translates song lyrics."},
-                            {"role": "user", "content": translate_prompt}
-                        ],
-                        max_tokens=400,
-                        n=1
-                    )
-            print(f"{response_eng.choices[0].message.content}")
-            translations = response_eng.choices[0].message.content.split('\n\n')
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system",
+                         "content": "You are a helpful assistant that translates song lyrics."},
+                        {"role": "user", "content": translate_prompt}
+                    ],
+                    max_tokens=400,
+                    n=1
+                )
 
-            lyrics1_eng = translations[0].replace('1. ', '')
-            lyrics2_eng = translations[1].replace('2. ', '')
-            lyrics3_eng = translations[2].replace('3. ', '')
+                translations = response_eng.choices[0].message.content.split('\n\n')
+
+                lyrics1_eng = translations[0].replace('1. ', '')
+                lyrics2_eng = translations[1].replace('2. ', '')
+                lyrics3_eng = translations[2].replace('3. ', '')
+
+            # lyrics_eng의 형식 수정
+            def process_lyrics(lyrics):
+                # 태그 제거
+                lyrics = lyrics.replace('<br />', '').replace('[Verse]', '').replace('[Outro]', '').replace('[End]', '')
+                # 빈 줄 제거하고 줄 단위로 나누기
+                lines = [line.strip() for line in lyrics.split('<br/>') if line.strip()]
+                return lines
+
+            lyrics1_eng = process_lyrics(lyrics1_eng)
+            lyrics2_eng = process_lyrics(lyrics2_eng)
+            lyrics3_eng = process_lyrics(lyrics3_eng)
 
             response_data = {
                 "lyrics_ori": [
