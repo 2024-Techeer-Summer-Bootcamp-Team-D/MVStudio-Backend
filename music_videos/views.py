@@ -269,21 +269,12 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 logger.error(f'{client_ip} POST /music-videos 400 missing required fields')
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
-            # '<br/>'로 split합니다.
-            lines = lyrics_eng.strip().split('<br/>')
-
-            # [Verse]와 같은 태그를 제외하고 저장, 그리고 모든 기호 제거
-            filtered_lines = [
-                re.sub(r'[^A-Za-z0-9\s]', '', re.sub(r'\[.*?\]', '', line))
-                for line in lines if not line.startswith('[') and line.strip()
-            ]
-
             # 뮤직 생성 task
             music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
 
             # 비디오 생성 task
             video_tasks = group(
-                create_video.s(line, style_name) for line in filtered_lines
+                create_video.s(line, style_name) for line in lyrics_eng
             )
 
             # 뮤직비디오 생성 task

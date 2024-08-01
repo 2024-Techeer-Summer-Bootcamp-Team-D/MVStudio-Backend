@@ -159,9 +159,18 @@ def create_video(line, style):
         "content-type": "application/json",
         "Authorization": settings.RUNWAYML_API_KEY
     }
-
-    response = requests.post(url, json=payload, headers=headers)
-    uuid = response.json()['uuid']
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        uuid = data['uuid']
+    except Exception as e:
+        logger.error(f'create video task error data : {data} error : {str(e)}')
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            uuid = response.json()['uuid']
+        except:
+            logger.error(f'create video task error data : {data} error : {str(e)}')
+            return False
 
     url = f"https://api.aivideoapi.com/status?uuid={uuid}"
 
@@ -195,7 +204,12 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
     audio_url = results[0][0]
     duration = results[0][1]
     urls = results[1:]
-    one_clip_size = (duration / 8)
+
+    for url in urls:
+        if url is False:
+            urls.remove(url)
+    urls_count = len(urls)
+    one_clip_size = (duration / urls_count)
     clip_count = int(one_clip_size // 5)
     last_clip_size = one_clip_size % 5
 
