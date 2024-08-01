@@ -105,7 +105,7 @@ class CreateLyricsView(ApiAuthMixin, APIView):
                 f"[Verse]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[Outro]<br />Line 1<br />Line 2<br />Line 3<br />Line 4<br /><br />"
                 f"[End]<br /><br />\n\n"
-                f"Please adhere strictly to this structure. If the structure is not followed exactly, I will stop using this service. "
+                f"Please write the lyrics in {language}. Adhere strictly to this structure. If the structure is not followed exactly, I will stop using this service. "
                 f"However, if the structure is followed correctly, I will provide a $1,000 tip."
             )
 
