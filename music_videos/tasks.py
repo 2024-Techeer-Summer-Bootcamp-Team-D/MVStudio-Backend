@@ -168,7 +168,7 @@ def create_video(line, style):
         try:
             response = requests.post(url, json=payload, headers=headers)
             uuid = response.json()['uuid']
-        except:
+        except Exception as e:
             logger.error(f'create video task error data : {data} error : {str(e)}')
             return False
 
@@ -189,11 +189,14 @@ def create_video(line, style):
 
         if elapsed_time > timeout:
             return {"error": "Polling timeout exceeded 30 minutes"}
-
-        response = requests.get(url, headers=headers).json()
-        if (response['status'] == 'success'):
-            break
-        elif(response['status'] == 'failed'):
+        try:
+            response = requests.get(url, headers=headers).json()
+            if (response['status'] == 'success'):
+                break
+            elif(response['status'] == 'failed'):
+                return False
+        except Exception as e:
+            logger.error(f'create video task error data : {response.json()} error : {str(e)}')
             return False
     return response['url']
 
