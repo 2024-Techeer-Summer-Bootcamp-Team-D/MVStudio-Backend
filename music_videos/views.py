@@ -274,7 +274,7 @@ class MusicVideoView(ApiAuthMixin, APIView):
 
             # [Verse]와 같은 태그를 제외하고 저장, 그리고 모든 기호 제거
             filtered_lines = [
-                re.sub(r'[^가-힣\s]', '', re.sub(r'\[.*?\]', '', line))
+                re.sub(r'[^A-Za-z0-9\s]', '', re.sub(r'\[.*?\]', '', line))
                 for line in lines if not line.startswith('[') and line.strip()
             ]
 
