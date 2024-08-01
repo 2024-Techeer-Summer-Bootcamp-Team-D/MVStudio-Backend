@@ -283,21 +283,12 @@ class MusicVideoView(ApiAuthMixin, APIView):
                 logger.error(f'{client_ip} POST /music-videos 400 missing required fields')
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
-            # 텍스트를 줄 단위로 나누기
-            lines = lyrics_eng.strip().split('<br />')
-
-            # [Verse]와 같은 태그를 제외하고 저장, 그리고 모든 기호 제거
-            filtered_lines = [
-                re.sub(r'[^A-Za-z0-9\s]', '', re.sub(r'\[.*?\]', '', line))
-                for line in lines if not line.startswith('[') and line.strip()
-            ]
-
             # 뮤직 생성 task
             music_task = suno_music.s(genre_names_str, instruments_str, tempo, vocal, lyrics, subject)
 
             # 비디오 생성 task
             video_tasks = group(
-                create_video.s(line, style_name) for line in filtered_lines
+                create_video.s(line, style_name) for line in lyrics_eng
             )
 
             # 뮤직비디오 생성 task
@@ -1072,37 +1063,55 @@ class HistoryCreateView(ApiAuthMixin, APIView):
             logger.warning(f'{client_ip} POST /music-videos/histories/create/{mv_id} 400 the user\'s music video')
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
-        history, created = History.objects.get_or_create(
-            username=member,
-            mv_id=mv,
-            defaults={
-                'current_play_time': 0,
-                'is_deleted': False
+        try:
+            history_exists = History.objects.filter(username=member.username, mv_id=mv).exists()
+            if history_exists:
+                history = History.objects.get(username=member.username, mv_id=mv)
+                response_data = {
+                    "history_id": history.id,
+                    "current_play_time": history.current_play_time,
+                    "code": "M008_3",
+                    "status": 409,
+                    "message": "이미 시청한 기록이 있습니다."
+                }
+                logger.warning(f'{client_ip} /music-videos/histories/create/{mv_id} 409 already exists')
+                return Response(response_data, status=status.HTTP_409_CONFLICT)
+        except Exception as e:
+            response_data = {
+                "code": "M008_5",
+                "status": 500,
+                "message": "서버 오류가 발생했습니다."
             }
-        )
+            logger.error(f'{client_ip} POST /music-videos/histories/create/{mv_id} 500 Internal Server Error - {str(e)}')
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if not created:
+        try:
+            history = History.objects.create(
+                username=member,
+                mv_id=mv,
+                current_play_time=0,
+                is_deleted=False
+            )
+            mv.views += 1
+            mv.recently_viewed += 1
+            mv.save()
             response_data = {
                 "history_id": history.id,
-                "current_play_time": history.current_play_time,
-                "code": "M008_4",
-                "status": 409,
-                "message": "이미 시청한 기록이 있습니다."
+                "code": "M008",
+                "status": 201,
+                "message": "시청 기록 추가 성공"
             }
-            logger.warning(f'{client_ip} /music-videos/histories/create/{mv_id} 409 already exists')
-            return Response(response_data, status=status.HTTP_409_CONFLICT)
-
-        response_data = {
-            "history_id": histories.id,
-            "code": "M008",
-            "status": 201,
-            "message": "시청 기록 추가 성공"
-        }
-        mv.views += 1
-        mv.recently_viewed += 1
-        mv.save()
-        logger.info(f'{client_ip} GET /music-videos/histories/create/{mv_id} 201 success')
-        return Response(response_data, status=201)
+            logger.info(f'{client_ip} GET /music-videos/histories/create/{mv_id} 201 success')
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            response_data = {
+                "code": "M008_5",
+                "status": 500,
+                "message": "서버 오류가 발생했습니다."
+            }
+            logger.error(
+                f'{client_ip} POST /music-videos/histories/create/{mv_id} 500 Internal Server Error - {str(e)}')
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class HistoryUpdateView(ApiAuthMixin, APIView):
     @swagger_auto_schema(
@@ -1582,12 +1591,13 @@ class CoverImageListView(PublicApiMixin, APIView):
         client_ip = request.META.get('REMOTE_ADDR', None)
 
         cover_images = MusicVideo.objects.filter(cover_image__isnull=False)
-        serializer = CoverImageSerializer(cover_images, many=True)
 
         page = request.query_params.get('page', 1)
         size = request.query_params.get('size', 14)
         paginator = Paginator(cover_images, size)
         paginated_queryset = paginator.get_page(page)
+
+        serializer = CoverImageSerializer(paginated_queryset, many=True)
 
         response_data = {
             "cover_images": serializer.data,
