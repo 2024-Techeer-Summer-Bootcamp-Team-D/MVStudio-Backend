@@ -7,7 +7,7 @@ User = get_user_model()
 @transaction.atomic
 def social_member_create(username, password=None, **extra_fields):
     member = Member(username=username, email=username)
-    member.credits = 0
+    member.credits = 20
 
     if password:
         member.set_password(password)
