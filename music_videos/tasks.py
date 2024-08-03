@@ -207,17 +207,18 @@ def mv_create(results, client_ip, current_time, subject, language, vocal, lyrics
     audio_url = results[0][0]
     duration = results[0][1]
     urls = results[1:]
+    new_urls = []
 
     for url in urls:
-        if url is False:
-            urls.remove(url)
-    urls_count = len(urls)
+        if url is not False:
+            new_urls.append(url)
+    urls_count = len(new_urls)
     one_clip_size = (duration / urls_count)
     clip_count = int(one_clip_size // 5)
     last_clip_size = one_clip_size % 5
 
     clips = []
-    for url in urls:
+    for url in new_urls:
         clip = create_reversed_video_clip(url, clip_count, last_clip_size)
         clips.append(clip)
     video = concatenate_videoclips(clips, method="compose")
